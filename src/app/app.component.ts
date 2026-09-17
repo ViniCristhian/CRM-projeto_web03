@@ -1,12 +1,21 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+import { AuthService } from './security/auth.service';
+
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [
+    RouterOutlet
+  ],
+  providers: [
+    AuthService
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'crm-ui';
+  title = 'CRM';
+
 }
