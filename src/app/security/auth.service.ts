@@ -23,8 +23,8 @@ export class AuthService {
       .append('Content-Type', 'application/json');
 
     const body = {
-      "username": user,
-      "password": password
+      "email": user,
+      "senha": password
     };
 
     try {
