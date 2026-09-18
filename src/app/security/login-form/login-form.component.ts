@@ -6,16 +6,17 @@ import { InputTextModule } from 'primeng/inputtext';
 import { AuthService } from '../auth.service';
 
 import { JwtHelperService, JwtModule } from '@auth0/angular-jwt';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-login-form',
   standalone: true,
   imports: [
-    CommonModule,
+   CommonModule,
     FormsModule,
     InputTextModule,
-    ButtonModule
+    ButtonModule,
+    RouterModule
   ],
   providers: [
     JwtHelperService
