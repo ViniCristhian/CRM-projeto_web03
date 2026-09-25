@@ -1,17 +1,17 @@
 import { Component } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
+import { Router, RouterModule } from '@angular/router';
 
+import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { MessageService } from 'primeng/api';
 
-import { User } from '../../core/model';
-import { UserService } from '../user.service';
 import { ErrorHandlerService } from '../../core/error-handler.service';
+import { User } from '../../core/model';
 import { MessageComponent } from '../../shared/message/message.component';
+import { UserService } from '../user.service';
 
 @Component({
   selector: 'app-user-register',

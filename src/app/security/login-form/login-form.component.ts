@@ -12,7 +12,7 @@ import { Router, RouterModule } from '@angular/router';
   selector: 'app-login-form',
   standalone: true,
   imports: [
-   CommonModule,
+    CommonModule,
     FormsModule,
     InputTextModule,
     ButtonModule,
@@ -26,7 +26,8 @@ import { Router, RouterModule } from '@angular/router';
 })
 export class LoginFormComponent {
 
-  msg: any;
+  jwtPayload: any;
+   msg: any;
 
   constructor(
     private auth: AuthService,
@@ -42,4 +43,5 @@ export class LoginFormComponent {
       this.msg = 'Usuário e/ou senha inválida!';
     });
   }
+
 }
