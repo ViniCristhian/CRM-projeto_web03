@@ -1,5 +1,6 @@
 import { Component, LOCALE_ID } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { NavbarComponent } from './core/navbar/navbar.component';
 import localePt from '@angular/common/locales/pt';
 import { registerLocaleData } from '@angular/common';
 
@@ -18,6 +19,7 @@ registerLocaleData(localePt);
   standalone: true,
   imports: [
     RouterOutlet,
+    NavbarComponent,
     ToastModule,
     ConfirmDialogModule
   ],
@@ -34,4 +36,9 @@ registerLocaleData(localePt);
 export class AppComponent {
   title = 'CRM';
 
+  constructor(public auth: AuthService) {}
+
+  showingNavbar(): boolean {
+    return !this.auth.isInvalidAccessToken();
+  }
 }
