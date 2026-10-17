@@ -1,0 +1,413 @@
+Roteiro - Aula 17/09/2026
+
+-------------------------------------------------
+Tratando rota não encontrada
+--------------------------------------------------
+
+- No terminal:
+
+  ng g c core/page-not-found --inline-style --inline-template --flat --skip-tests
+
+- No page-not-found.component.ts, alterar template:
+
+  template: `
+    <div class="container">
+      <h1 class="text-center">Página não encontrada</h1>
+    </div>
+  `,
+
+- No app-routing.module.ts, adicionar duas rotas:
+
+  { path: 'page-not-found', component: PageNotFoundComponent },
+  { path: '**', redirectTo: 'page-not-found'} // importante que seja a última rota
+
+--------------------------------------------------
+Definindo o título da página dinamicamente
+--------------------------------------------------
+
+- No activities-list.component.ts, adicionar provider:
+
+  providers:[
+    Title
+  ],
+
+- No activities-list.component.ts, injetar Title no construtor e alterar método ngOnInit:
+
+  ...
+
+  constructor(
+    private activityService: ActivityService,
+    private confirmation: ConfirmationService,
+    private messageService: MessageService,
+    private errorHandler: ErrorHandlerService,
+    private title: Title
+  ){}
+
+  ngOnInit(): void {
+    this.title.setTitle('Listagem de Atividades');
+    this.list();
+  }
+
+- No activities-register.component.ts, adicionar provider:
+
+  providers:[
+    Title
+  ],
+
+
+- No activity-register.component.ts, injetar Title no construtor e alterar método ngOnInit:
+
+  
+  constructor(
+    private activityService: ActivityService,
+    private auth: AuthService,
+    private errorHandler: ErrorHandlerService,
+    private messageService: MessageService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private title: Title
+  ){
+    this.activity = new Activity(this.auth.jwtPayload?.user_id);
+  }
+
+  ngOnInit(): void {
+    const id = this.route.snapshot.params[`id`];
+    if(id != 'new'){
+      this.loadActivity(id);
+    }
+    this.title.setTitle('Cadastro de Atividade');// aqui!
+  }
+
+--------------------------------------------------
+Removendo o underline dos hyperlinks
+--------------------------------------------------
+
+- Nos arquivos activities-list.component.css e login-form.component.css, adicione:
+
+a {
+  text-decoration: none;
+}
+
+--------------------------------------------------
+Exibindo o nome do usuário logado
+--------------------------------------------------
+
+- No navbar.component.ts, injetar:
+
+  constructor(public auth: AuthService) { }
+
+- No navbar.component.html, alterar usuario:
+
+    <li class="navbar-user">{{ auth.jwtPayload?.name }}</li>
+
+- No navbar.component.css, alterar de .navbar-usuario para .navbar-user:
+
+    .navbar-user {
+      padding: 15px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #525151;
+
+      text-transform: uppercase;
+      font-weight: bold;
+      color: #fff;
+    }
+
+--------------------------------------------------
+Definindo a rota principal
+--------------------------------------------------
+  
+- No arquivo app.routes.ts, alterar routes:
+
+export const routes: Routes = [
+  { path: '', redirectTo: 'activities', pathMatch: 'full' },
+  { path: 'activities/:id', component: ActivityRegisterComponent },
+  { path: 'activities', component: ActivitiesListComponent },
+  { path: 'activities/new', component: ActivityRegisterComponent },
+  { path: 'users/new', component: UserRegisterComponent },
+  { path: 'login', component: LoginFormComponent },
+  { path: 'page-not-found', component: PageNotFoundComponent },
+  { path: '**', redirectTo: 'page-not-found'}
+];
+
+- No arquivo activities-list.component.ts, injete o router e altere o método list():
+
+  constructor(
+    private activityService: ActivityService,
+    private confirmation: ConfirmationService,
+    private messageService: MessageService,
+    private errorHandler: ErrorHandlerService,
+    private title: Title,
+    private router: Router
+  ){ }
+
+  ...
+
+  list(): void {
+    this.activityService.listByUser()
+      .then(result => {
+        this.activities = result;
+      })
+      .catch(error => {
+        if (error.status === 401 || error.status === 403) {
+            this.router.navigate(['/login']);
+        }
+      });
+  }
+
+-------------------------------------------------------------------
+Interceptando chamadas HTTP para tratar a expiração do access token
+-------------------------------------------------------------------
+
+No auth.service.ts, adicionar urls, alterar o método de login() e adicionar mais dois métodos:
+
+  ...
+
+  refreshTokenUrl = 'http://localhost:8080/auth/refresh';
+  logoutUrl = 'http://localhost:8080/auth/logout';
+
+  ...
+
+  async login(user: string, password: string): Promise<void> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const body = {
+      "username": user,
+      "password": password
+    };
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(this.oauthTokenUrl, body, { headers, withCredentials: true })
+      );
+      console.log(response);
+      this.storeToken(response['accessToken']);
+        } catch (response: any) {
+      if (response.status === 400 && response.error === 'invalid_grant') {
+        return Promise.reject('Usuário e/ou senha inválida!');
+      }
+      return Promise.reject(response);
+    }
+  }
+  ....
+
+  async getNewAccessToken(): Promise<void> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const body = {};
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(this.refreshTokenUrl, body, { headers, withCredentials: true })
+      );
+      console.log('Novo access token criado!');
+      this.storeToken(response['accessToken']);
+    } catch (response: any) {
+      if (response.status === 400 && response.error === 'invalid_grant') {
+        return Promise.reject('Erro ao renovar token.');
+      }
+      return Promise.reject(response);
+    }
+  }
+
+  isInvalidAccessToken(): boolean {
+    const token = localStorage.getItem('token');
+
+    return !token || this.jwtHelper.isTokenExpired(token);
+  }
+
+- Criar um novo arquivo no módulo security - ifitness-http-interceptor.ts:
+
+import { Injectable } from '@angular/core';
+import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
+import { Observable, from, throwError } from 'rxjs';
+import { catchError, mergeMap } from 'rxjs/operators';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class IfitnessHttpInterceptor implements HttpInterceptor {
+
+  constructor(private auth: AuthService) {}
+
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+
+    // 1. Se for Login ou Refresh, passa direto sem mexer
+    if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh') || req.url.includes('/users')) {
+      return next.handle(req);
+    }
+
+    // 2. Verifica se o token precisa ser renovado ANTES da requisição
+    if (this.auth.isInvalidAccessToken()) {
+      return from(this.auth.getNewAccessToken()).pipe(
+        mergeMap(() => {
+          // O token foi renovado e salvo no localStorage.
+          // Agora recuperamos e anexamos à requisição.
+          const newToken = localStorage.getItem('token');
+          const authReq = this.addTokenHeader(req, newToken);
+          return next.handle(authReq);
+        }),
+        // É importante tratar erros aqui. Se o refresh falhar, desloga o usuário.
+        catchError((error) => {
+            return throwError(() => error);
+        })
+      );
+    }
+
+    // 3. Adicionar o header antes de enviar.
+    const token = localStorage.getItem('token');
+    const authReq = this.addTokenHeader(req, token);
+
+    return next.handle(authReq);
+  }
+
+  private addTokenHeader(req: HttpRequest<any>, token: string | null): HttpRequest<any> {
+    if (!token) {
+        return req;
+    }
+    return req.clone({
+      // Adiciona o cabeçalho Authorization
+        setHeaders: {
+            Authorization: `Bearer ${token}`
+        },
+        // Adiciona a flag para enviar Cookies junto com a requisição
+        withCredentials: true
+    });
+  }
+}
+
+- No app.config.ts, alterar disallowedRoutes e adicionar no providers:
+
+    disallowedRoutes: ['http://localhost:8080/auth/login', 'http://localhost:8080/auth/refresh','http://localhost:8080/users']
+
+    ...
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: IfitnessHttpInterceptor,
+      multi: true
+    }
+    
+- Diminuir o tempo de validade do AccessToken na API para 30 segundos.
+
+.expiresAt(now.plus(30, ChronoUnit.SECONDS)) 
+
+-----------------------------------------------------
+Implementando o logout
+-----------------------------------------------------
+
+Na API: 
+
+- Alterar o método logout da classe AuthController:
+
+    @PostMapping("/logout")
+    public void logout(HttpServletResponse response) {
+        // Para fazer logout, criamos um cookie que expira imediatamente
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true).secure(false).path("/auth")
+                .maxAge(0) // Expira o cookie
+                .sameSite("Strict").build();
+        
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+No Angular:
+
+- No auth.service.ts, adicionar o método logout():
+
+  async logout(): Promise<void> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const body = {};
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(this.logoutUrl, body, { headers, withCredentials: true })
+      );
+      console.log(response);
+      this.storeToken(response['accessToken']);
+    } catch (response: any) {
+      return Promise.reject(response);
+    } finally {
+      localStorage.removeItem('token');
+    }
+  }
+
+
+- No navbar.component.ts, injetar router  adicionar método logout():
+
+export class NavbarComponent {
+
+  displayingMenu = false;
+
+  constructor(
+    public auth: AuthService,
+    private router: Router
+  ) { }
+
+  logout() {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+  
+}
+
+No navbar.component.html, alterar o link de logout:
+
+<li class="navbar-menuitem"><a href="javascript:;" (click)="logout()">Logout</a></li>
+
+------------------------------------------------------------
+Ocultando navbar na página de login e de cadastro de usuário
+------------------------------------------------------------
+
+- Alterar app.component.ts:
+
+import { Component, LOCALE_ID } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { CommonModule, registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
+
+import { ToastModule} from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
+
+import { AuthService } from './security/auth.service';
+import { NavbarComponent } from './core/navbar/navbar.component';
+import { ErrorHandlerService } from './core/error-handler.service';
+
+registerLocaleData(localePt);
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    NavbarComponent,
+    ToastModule,
+    ConfirmDialogModule
+  ],
+  providers: [
+    AuthService,
+    MessageService,
+    ConfirmationService,
+    ErrorHandlerService,
+    { provide: LOCALE_ID, useValue: 'pt-BR' }
+  ],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
+})
+export class AppComponent {
+  title = 'ifitness-ui';
+
+  constructor(private router: Router){}
+
+  showingNavbar(): boolean {
+    return this.router.url != '/login' && this.router.url != '/users/new';
+  }
+
+}
+
+- Alterar app.component.html:
+
+<app-navbar *ngIf="showingNavbar()"></app-navbar>

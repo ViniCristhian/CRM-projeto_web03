@@ -1,0 +1,507 @@
+Roteiro - Aula 27/08/2026
+
+--------------------------------------------------
+Excluindo atividades
+--------------------------------------------------
+
+No app.component.ts, adicionar imports e providers:
+
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ToastModule} from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog'
+
+import { AuthService } from './security/auth.service';
+import { NavbarComponent } from './core/navbar/navbar.component';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    NavbarComponent,
+    ToastModule,
+    ConfirmDialogModule
+  ],
+  providers: [
+    AuthService,
+    MessageService,
+    ConfirmationService
+  ],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
+})
+export class AppComponent {
+  title = 'ifitness-ui';
+
+}
+
+
+- Alterar código do app.component.html
+
+<app-navbar></app-navbar>
+
+<router-outlet></router-outlet>
+
+<p-toast></p-toast>
+
+<p-confirmDialog header="Confirmação" icon="pi pi-question-circle" #confirmation>
+  <p-footer>
+    <button type="button" pButton icon="pi pi-check" label="Sim"
+      (click)="confirmation.accept()"></button>
+    <button type="button" pButton icon="pi pi-times" label="Não"
+      (click)="confirmation.reject()"></button>
+  </p-footer>
+</p-confirmDialog>
+
+- No activity.service.ts, adicionar método:
+
+  async delete(id: number): Promise<any> {
+    await this.http.delete(`${this.activitiesUrl}/${id}`)
+      .toPromise();
+    return null;
+  }
+
+- No activities-list.component.ts, injetar serviços e adicionar métodos:
+
+  constructor(
+    private activityService: ActivityService,
+    private confirmation: ConfirmationService,
+    private messageService: MessageService
+  ){ }
+
+  ...
+
+  confirmRemoval(activity: any): void {
+    this.confirmation.confirm({
+      message: 'Tem certeza que deseja excluir?',
+      accept: () => {
+        this.delete(activity);
+      }
+    });
+  }
+
+  delete(activity: any): void {
+    this.activityService.delete(activity.id)
+      .then(() => {
+        this.list();
+        this.messageService.add({ severity: 'success', detail: 'Atividade excluída com sucesso!' });
+      });
+  }
+
+No activities-list.component.html, alterar o botão de exclusão:
+
+	<button pButton icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="top"
+                (click)="confirmRemoval(activity)"></button>
+
+------------------------------------------------------
+Criando um serviço de tratamento de erros
+------------------------------------------------------
+
+- No terminal,
+
+ng g s core/error-handler --skip-tests
+
+- No app.component.ts, alterar:
+
+import { Component, LOCALE_ID } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import localePt from '@angular/common/locales/pt';
+import { registerLocaleData } from '@angular/common';
+
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ToastModule} from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog'
+
+import { AuthService } from './security/auth.service';
+import { NavbarComponent } from './core/navbar/navbar.component';
+
+import { ErrorHandlerService } from './core/error-handler.service';
+
+registerLocaleData(localePt);
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    NavbarComponent,
+    ToastModule,
+    ConfirmDialogModule
+  ],
+  providers: [
+    AuthService,
+    MessageService,
+    ConfirmationService,
+    ErrorHandlerService,
+    { provide: LOCALE_ID, useValue: 'pt-BR' }
+  ],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
+})
+export class AppComponent {
+  title = 'ifitness-ui';
+
+}
+
+
+- No error-handler.service.ts:
+
+import { HttpErrorResponse } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+
+import { MessageService } from 'primeng/api';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ErrorHandlerService {
+
+  constructor(private messageService: MessageService) { }
+
+  handle(errorResponse: any): void {
+    let msg: string;
+
+    if (typeof errorResponse === 'string') {
+      msg = errorResponse;
+    } else if (errorResponse instanceof HttpErrorResponse
+      && errorResponse.status >= 400 && errorResponse.status <= 499) {
+      msg = 'Ocorreu um erro ao processar a sua solicitação';
+
+      if (errorResponse.status === 403) {
+        msg = 'Você não tem permissão para executar esta ação';
+      }
+
+      try {
+        msg = errorResponse.error[0].userMessage;
+      } catch (e) { }
+
+      console.error('Ocorreu um erro', errorResponse);
+
+    } else {
+      msg = 'Erro ao processar serviço remoto. Tente novamente.';
+      console.error('Ocorreu um erro', errorResponse);
+    }
+
+    this.messageService.add({ severity: 'error', detail: msg });
+  }
+
+}
+
+- No activities-list.component.ts, injetar um service e alterar os métodos:
+
+  ...
+  constructor(
+    private activityService: ActivityService,
+    private confirmation: ConfirmationService,
+    private messageService: MessageService,
+    private errorHandler: ErrorHandlerService
+  ){ }
+  ...
+
+  list(): void {
+    this.activityService.listByUser()
+      .then(result => {
+        this.activities = result;
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+  ...
+
+  delete(activity: any): void {
+    this.activityService.delete(activity.id)
+      .then(() => {
+        this.list();
+        this.messageService.add({ severity: 'success', detail: 'Atividade excluída com sucesso!' });
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+- No activity-register.component.ts, importar, injetar service e alterar método:
+
+  ...
+  constructor(
+    private activityService: ActivityService,
+    private auth: AuthService,
+    private errorHandler: ErrorHandlerService,
+    private messageService: MessageService
+  ){
+    this.activity = new Activity(this.auth.jwtPayload?.user_id);
+  }
+  ...
+
+  save(activityForm: NgForm) {
+    this.activityService.add(this.activity)
+      .then(() => {
+        this.messageService.add({ severity: 'success', detail: 'Atividade adicionada com sucesso!' });
+        activityForm.reset();
+        this.activity = new Activity(this.auth.jwtPayload?.user_id);
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+-------------------------------------------------------------
+Edição de atividades
+-------------------------------------------------------------
+
+- No app.routes.ts, adicionar uma nova rota:
+
+export const routes: Routes = [
+  { path: 'activities/:id', component: ActivityRegisterComponent },
+  { path: 'activities', component: ActivitiesListComponent },
+  { path: 'activities/new', component: ActivityRegisterComponent },
+  { path: 'login', component: LoginFormComponent }
+];
+
+
+- No activity.service.ts, import e adicionar métodos:
+
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../security/auth.service';
+import { Activity } from '../core/model';
+
+import moment from 'moment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ActivityService {
+
+  activitiesUrl = 'http://localhost:8080/activities';
+
+  email: any;
+
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService
+  ) { }
+
+  async listByUser(): Promise<any> {
+    this.email = this.auth.jwtPayload?.sub;
+    return await firstValueFrom(this.http.get(`${this.activitiesUrl}/user/${this.email}`));
+  }
+
+  async add(activity: Activity): Promise<Activity> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    const body = Activity.toJson(activity);
+    return await firstValueFrom(this.http.post<Activity>(this.activitiesUrl, body, { headers }));
+  }
+
+  async delete(id: number): Promise<any> {
+    await this.http.delete(`${this.activitiesUrl}/${id}`)
+      .toPromise();
+    return null;
+  }
+
+  async update(activity: Activity): Promise<Activity | undefined> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const response = await this.http.put<Activity>(`${this.activitiesUrl}/${activity.id}`, Activity.toJson(activity), { headers })
+      .toPromise();
+    const updated = response;
+    if(updated){
+      this.stringToDate(updated);
+    }
+    return updated;
+  }
+
+  async findById(id: number): Promise<Activity | undefined> {
+    const response = await this.http.get<Activity>(`${this.activitiesUrl}/${id}`)
+      .toPromise();
+    const activity = response;
+    if(activity){
+      this.stringToDate(activity);
+    }
+    return activity;
+  }
+
+  private stringToDate(activity: Activity): void {
+    activity.date = moment(activity.date, 'DD/MM/YYYY').toDate();
+  }
+
+}
+  
+- No activity-register.component.ts:
+
+import { Component } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
+import { DatePicker } from 'primeng/datepicker';
+import { SelectModule } from 'primeng/select';
+import { Activity } from '../../core/model';
+import { ActivityService } from '../activity.service';
+import { AuthService } from '../../security/auth.service';
+import { MessageComponent } from '../../shared/message/message.component';
+import { ErrorHandlerService } from '../../core/error-handler.service';
+import { MessageService } from 'primeng/api';
+import { ActivatedRoute, RouterModule } from '@angular/router';
+
+@Component({
+  selector: 'app-activity-register',
+  standalone: true,
+  imports: [
+    FormsModule,
+    InputTextModule,
+    ButtonModule,
+    TableModule,
+    TooltipModule,
+    DatePicker,
+    SelectModule,
+    MessageComponent,
+    RouterModule
+   ],
+  templateUrl: './activity-register.component.html',
+  styleUrl: './activity-register.component.css'
+})
+export class ActivityRegisterComponent {
+
+  types = [
+    { label: 'Caminhada', value: 'CAMINHADA' },
+    { label: 'Ciclismo', value: 'CICLISMO' },
+    { label: 'Corrida', value: 'CORRIDA' },
+    { label: 'Natação', value: 'NATACAO' }
+  ];
+
+  activity: Activity;
+
+  constructor(
+    private activityService: ActivityService,
+    private auth: AuthService,
+    private errorHandler: ErrorHandlerService,
+    private messageService: MessageService,
+    private route: ActivatedRoute
+  ){
+    this.activity = new Activity(this.auth.jwtPayload?.user_id);
+  }
+
+  ngOnInit(): void {
+    const id = this.route.snapshot.params[`id`];
+    if(id != 'new'){
+      this.loadActivity(id);
+    }
+  }
+
+  get editing(): boolean {
+    return Boolean(this.activity.id);
+  }
+
+  loadActivity(id: number) {
+    this.activityService.findById(id)
+      .then(activity => {
+        if(activity){
+          this.activity = activity;
+        }
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+  save(){
+    if(this.editing){
+      this.updateActivity();
+    }else{
+      this.addActivity();
+    }
+  }
+
+  updateActivity() {
+    this.activityService.update(this.activity)
+      .then(activity => {
+        this.messageService.add({ severity: 'success', detail: 'Atividade editada com sucesso!' });
+        if (activity) {
+          this.activity = activity;
+        } else {
+          this.errorHandler.handle(new Error('Atividade não encontrada.'));
+          this.activity = new Activity(this.auth.jwtPayload?.user_id);
+        }
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+  addActivity() {
+    this.activityService.add(this.activity)
+      .then(() => {
+        this.messageService.add({ severity: 'success', detail: 'Atividade adicionada com sucesso!' });
+        activityForm.reset();
+        this.activity = new Activity(this.auth.jwtPayload?.user_id);
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+}
+
+- No activity-register.component.html, atualizar cabeçalho e link:
+
+  <h1>{{ editing ? 'Edição de' : 'Nova' }} Atividade</h1>
+
+  ...
+
+  <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+
+  ...
+
+  <a routerLink="/activities">Voltar para a pesquisa</a>
+
+- No activities-list.component.ts, adicionar import:
+
+  imports: [
+    CommonModule,
+    ButtonModule,
+    TableModule,
+    TooltipModule,
+    RouterModule
+  ],
+
+No activities-list.component.html, atualizar:
+
+  <a pButton icon="pi pi-pencil" pTooltip="Editar" tooltipPosition="top"
+                [routerLink]="['/activities', activity.id]"></a>
+  ...
+
+  <p><a pButton label="Nova Atividade" routerLink="/activities/new"></a></p>
+
+--------------------------------------------------
+Permitindo edição após cadastrar uma nova atividade
+--------------------------------------------------
+
+- No activity-register.component.ts, injetar no construtor, alterar método adicionar:
+
+  private router: Router
+
+  ...
+  
+  addActivity() {
+    this.activityService.add(this.activity)
+      .then(addedActivity => {
+        this.messageService.add({ severity: 'success', detail: 'Atividade adicionada com sucesso!' });
+	this.loadActivity(addedActivity.id);
+        this.router.navigate(['/activities', addedActivity.id]);
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+--------------------------------------------------------------
+Habilitar o botão Nova do componente de cadastro de atividade:
+--------------------------------------------------------------
+
+- No activity-register.component.ts, adicionar o método:
+
+  new(activityForm: NgForm){
+    this.activity = new Activity(this.auth.jwtPayload?.user_id);
+    activityForm.reset();
+    this.router.navigate(['/activities/new']);
+  }
+
+- No activity-register.component.html, alterar botão Nova:
+
+ 	<button pButton type="button" label="Nova" class="p-button-info"
+            (click)="new(f)"></button>
+            

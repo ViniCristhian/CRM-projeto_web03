@@ -1,7 +1,15 @@
 <div class="home-container">
   <div class="welcome-card">
-    <p class="eyebrow">Dashboard</p>
+    <p class="eyebrow">Dashboard CRM</p>
     <h1>Bem-vindo, {{ username }}!</h1>
-    <p>Você acessou a página inicial do sistema.</p>
+    <p>Resumo operacional do sistema para clientes, contatos e oportunidades.</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card" *ngFor="let stat of stats" [ngClass]="stat.color">
+      <span class="label">{{ stat.label }}</span>
+      <strong>{{ stat.value }}</strong>
+      <small>{{ stat.details }}</small>
+    </div>
   </div>
 </div>

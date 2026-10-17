@@ -1,36 +1,31 @@
-<div class="container">
-
-    {{ msg }}
-
-  <form autocomplete="off" #f="ngForm">
-    <div class="p-grid p-fluid login">
-
+<div class="container login-shell">
+  <form autocomplete="off" #f="ngForm" (ngSubmit)="login(user.value, password.value)">
+    <div class="p-grid p-fluid login-card">
       <div class="p-col-12 title">
+        <p class="eyebrow">CRM</p>
         <h1>Login</h1>
       </div>
 
-      <div class="p-col-12">
-        <p><input pInputText type="email" name="user" placeholder="E-mail"
+      <div *ngIf="msg" class="p-col-12 alert-box" role="alert" aria-live="assertive">
+        {{ msg }}
+      </div>
+
+      <div class="p-col-12 field-group">
+        <label for="email">E-mail</label>
+        <input id="email" pInputText type="email" name="user" placeholder="nome@empresa.com"
           ngModel required #user>
-        </p>
       </div>
 
-      <div class="p-col-12">
-        <p>
-          <input pInputText type="password" name="password" placeholder="Senha"
+      <div class="p-col-12 field-group">
+        <label for="senha">Senha</label>
+        <input id="senha" pInputText type="password" name="password" placeholder="Sua senha"
           ngModel required #password>
-        </p>
-
       </div>
 
-      <div class="p-col-12">
-        <p><button pButton type="submit" label="Login" [disabled]="!f.valid"
-          (click)="login(user.value, password.value)"></button>
-        </p>
+      <div class="p-col-12 actions">
+        <button pButton type="submit" label="Login" [disabled]="!f.valid"></button>
         <a pButton label="Cadastrar" routerLink="/users/new"></a>
       </div>
-
     </div>
   </form>
-
 </div>

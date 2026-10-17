@@ -1,0 +1,7 @@
+.app-shell {
+  min-height: calc(100vh - 160px);
+}
+
+app-footer {
+  display: block;
+}

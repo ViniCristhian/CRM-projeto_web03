@@ -28,7 +28,9 @@ export const appConfig: ApplicationConfig = {
           disallowedRoutes: [
             'http://localhost:8080/auth/login',
             'http://localhost:8080/auth/refresh',
-            'http://localhost:8080/usuario'
+            'http://localhost:8080/auth/logout',
+            'http://localhost:8080/usuario',
+            'http://localhost:8080/usuario/register'
           ]
         }
       })

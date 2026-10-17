@@ -1,5 +1,3 @@
-import moment from 'moment';
-
 export class User {
   id!: number;
   nome!: string;
@@ -10,10 +8,19 @@ export class User {
   static toJson(user: User): any {
     return {
       id: user.id,
-      name: user.nome,
+      nome: user.nome,
       email: user.email,
-      password: user.senha,
-      active: user.ativo
-    }
+      senha: user.senha,
+      ativo: user.ativo
+    };
   }
+}
+
+export class Client {
+  id!: number;
+  nome!: string;
+  email!: string;
+  telefone!: string;
+  empresa!: string;
+  status = 'Ativo';
 }

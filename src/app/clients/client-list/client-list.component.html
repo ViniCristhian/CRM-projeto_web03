@@ -1,0 +1,41 @@
+<div class="container page-shell">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Clientes</h1>
+    </div>
+    <a pButton label="Novo cliente" icon="pi pi-plus" routerLink="/clients/new"></a>
+  </div>
+
+  <div class="card surface">
+    <p-table [value]="clients" [tableStyle]="{ 'min-width': '100%' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nome</th>
+          <th>Empresa</th>
+          <th>E-mail</th>
+          <th>Telefone</th>
+          <th>Status</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-client>
+        <tr>
+          <td>{{ client.nome }}</td>
+          <td>{{ client.empresa }}</td>
+          <td>{{ client.email }}</td>
+          <td>{{ client.telefone }}</td>
+          <td>
+            <span class="status-badge" [ngClass]="client.status === 'Ativo' ? 'active' : 'potential'">
+              {{ client.status }}
+            </span>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5">Nenhum cliente cadastrado.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

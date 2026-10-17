@@ -7,8 +7,8 @@
       </div>
 
       <div class="p-col-12 p-md-9 p-fluid">
-        <label>Nome completo</label>
-        <input pInputText name="name" type="text"
+        <label for="nome">Nome completo</label>
+        <input id="nome" pInputText name="name" type="text"
         [(ngModel)]="user.nome" #name="ngModel" required minlength="3" maxlength="50">
         <app-message [control]="name" error="required" text="Informe um nome"></app-message>
         <app-message [control]="name" error="minlength"
@@ -16,18 +16,18 @@
       </div>
 
       <div class="p-col-12 p-md-9 p-fluid">
-        <label>E-mail</label>
-        <input pInputText name="email" type="email"
+        <label for="email">E-mail</label>
+        <input id="email" pInputText name="email" type="email"
         [(ngModel)]="user.email" #email="ngModel" required>
         <app-message [control]="email" error="required" text="Informe um e-mail"></app-message>
       </div>
 
 
       <div class="p-col-12 p-md-9 p-fluid">
-        <label>Senha</label>
-        <input pInputText name="password" type="password"
-        [(ngModel)]="user.senha" #password="ngModel" required minlength="6" maxlength="8">
-        <app-message [control]="password" error="required" text="Informe uma senha de 6 a 8 caracteres."></app-message>
+        <label for="password">Senha</label>
+        <input id="password" pInputText name="password" type="password"
+        [(ngModel)]="user.senha" #password="ngModel" required minlength="8" maxlength="50">
+        <app-message [control]="password" error="required" text="Informe uma senha com pelo menos 8 caracteres."></app-message>
         <app-message [control]="password" error="minlength"
         text="Mínimo de {{ password.errors?.minlength?.requiredLength }} caracteres. Você digitou apenas {{ password.errors?.minlength?.actualLength }}"></app-message>
       </div>

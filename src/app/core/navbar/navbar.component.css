@@ -1,10 +1,84 @@
 .navbar {
-  padding: 20px 0 10px;
-  background-color: var(--p-emerald-500);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: linear-gradient(90deg, #16a34a 0%, #1d4ed8 100%);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.navbar-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  gap: 1rem;
+}
+
+.brand-wrap {
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+}
+
+.brand-mark {
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.brand-subtitle {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.nav-links a,
+.navbar-menuitem a {
+  color: #e2e8f0;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-links a {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.nav-links a.active,
+.nav-links a:hover,
+.navbar-menuitem a:hover,
+.navbar-menuitem a.active {
+  color: #fff;
+  opacity: 1;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-pill {
+  color: #fff;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .navbar-toggle {
+  background: transparent;
+  border: none;
   color: #fff;
+  font-size: 1.35rem;
+  cursor: pointer;
 }
 
 .navbar-menu {
@@ -12,35 +86,43 @@
   top: 0;
   bottom: 0;
   right: 0;
-  width: 210px;
+  width: min(260px, 80vw);
   margin: 0;
   padding: 0;
   z-index: 9998;
-
-  background-color: #3a3633;
-
+  background: linear-gradient(180deg, #0f172a, #1e293b);
   list-style: none;
+  box-shadow: -12px 0 30px rgba(15, 23, 42, 0.18);
 }
 
 .navbar-user {
-      padding: 15px;
-      margin-bottom: 15px;
-      border-bottom: 1px solid #525151;
-
-      text-transform: uppercase;
-      font-weight: bold;
-      color: #fff;
-    }
+  padding: 20px 15px 15px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #e2e8f0;
+}
 
 .navbar-menuitem {
-  padding: 15px;
+  padding: 0.9rem 1rem;
 }
 
 .navbar-menuitem a {
-  color: #c0bbb7;
-  text-decoration: none;
+  display: block;
 }
 
-.navbar-menuitem a:hover {
-  color: #fff;
+.desktop-nav {
+  display: flex;
 }
+
+@media (max-width: 760px) {
+  .desktop-nav {
+    display: none;
+  }
+
+  .user-pill {
+    display: none;
+  }
+}
+

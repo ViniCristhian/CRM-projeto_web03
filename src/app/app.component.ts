@@ -1,6 +1,7 @@
 import { Component, LOCALE_ID } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './core/navbar/navbar.component';
+import { FooterComponent } from './core/footer/footer.component';
 import localePt from '@angular/common/locales/pt';
 import { registerLocaleData } from '@angular/common';
 
@@ -8,9 +9,8 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { ToastModule} from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog'
 
-import { AuthService } from './security/auth.service';
-
 import { ErrorHandlerService } from './core/error-handler.service';
+import { AuthService } from './security/auth.service';
 
 registerLocaleData(localePt);
 
@@ -20,11 +20,11 @@ registerLocaleData(localePt);
   imports: [
     RouterOutlet,
     NavbarComponent,
+    FooterComponent,
     ToastModule,
     ConfirmDialogModule
   ],
   providers: [
-    AuthService,
     MessageService,
     ConfirmationService,
     ErrorHandlerService,

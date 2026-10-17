@@ -1,0 +1,1021 @@
+Roteiro - Aula 15/10/2026
+
+Objetivo da aula: aplicar no projeto Angular o layout com Bootstrap e criar o Painel Inicial (dashboard) com as estatísticas das atividades do usuário.
+
+Ordem da aula:
+  1. Trocando o PrimeFlex pelo Bootstrap
+  2. Tema verde no PrimeNG
+  3. Estilos globais
+  4. Rodapé e estrutura da página
+  5. Nova barra de navegação
+  6. API: estatísticas das atividades
+  7. Painel Inicial (dashboard)
+  8. Gráfico de atividades por tipo (extensão)
+  9. Login e cadastros no novo layout (extensão)
+ 10. Exercício Prático de Fixação
+
+As seções 1 a 7 são o núcleo da aula. As seções 8 e 9 podem ser concluídas
+em casa: o passo a passo está completo.
+
+Quem faz o quê a partir de agora:
+  - Bootstrap: estrutura e aparência das páginas (container, grid, navbar,
+    cards, formulários, botões).
+  - PrimeNG: componentes com comportamento (tabela com paginação, seleção,
+    calendário, mensagens, diálogo de confirmação, gráfico).
+
+-----------------------------------------------------
+1. Trocando o PrimeFlex pelo Bootstrap
+-----------------------------------------------------
+
+- Pare o servidor do Angular (Ctrl + C no terminal do ng serve).
+
+- No terminal, remova o PrimeFlex e instale o Bootstrap e os ícones:
+
+  npm uninstall primeflex
+  npm install bootstrap bootstrap-icons
+
+- No arquivo angular.json, localize a PRIMEIRA lista "styles"  e "scripts" (dentro de
+  "build") e altere para:
+
+            "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "node_modules/bootstrap-icons/font/bootstrap-icons.min.css",
+              "src/styles.css"
+            ],
+            "scripts": [
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+            ]
+
+  Observação: o styles.css fica por último para que as nossas regras
+  prevaleçam sobre as do Bootstrap.
+
+- Inicie novamente o servidor (ng serve). Alterações no angular.json só
+  valem depois de reiniciar.
+
+Teste:
+
+- Abra a aplicação. A fonte dos textos muda (é a fonte do Bootstrap) e as
+  páginas continuam funcionando.
+
+-----------------------------------------------------
+2. Tema verde no PrimeNG
+-----------------------------------------------------
+
+- Os componentes do PrimeNG usam o tema Aura. Vamos manter o Aura, trocando
+  apenas a cor primária para verde, para combinar com o verde do Bootstrap.
+
+- No arquivo app.config.ts, adicione o import (acima do import do Aura):
+
+import { definePreset } from '@primeng/themes';
+
+- No mesmo arquivo, adicione a constante antes da função tokenGetter():
+
+// Tema do PrimeNG: o Aura com a cor primária trocada para verde,
+// para combinar com o verde (bg-success) do Bootstrap
+const IfitnessPreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{green.50}',
+      100: '{green.100}',
+      200: '{green.200}',
+      300: '{green.300}',
+      400: '{green.400}',
+      500: '{green.500}',
+      600: '{green.600}',
+      700: '{green.700}',
+      800: '{green.800}',
+      900: '{green.900}',
+      950: '{green.950}'
+    }
+  }
+});
+
+- No mesmo arquivo, altere a configuração do providePrimeNG:
+
+    providePrimeNG({
+      theme: {
+        preset: IfitnessPreset,
+        options: {
+          darkModeSelector: false // mantém o tema claro, como no Bootstrap
+        }
+      }
+    }),
+
+Teste:
+
+- Os botões do PrimeNG (por exemplo, "Filtrar" e "Nova Atividade") continuam
+  verdes, agora em um tom mais próximo do verde do Bootstrap.
+
+-----------------------------------------------------
+3. Estilos globais
+-----------------------------------------------------
+
+- Substitua todo o conteúdo do arquivo styles.css:
+
+/* You can add global styles to this file, and also import other style files */
+@import "primeicons/primeicons.css";
+
+body {
+  background-color: lightgrey;
+}
+
+h2 {
+  color: green;
+  text-align: center;
+}
+
+.col-actions-header {
+  width: 120px;
+}
+
+/* TEMPORÁRIO: regras dos formulários antigos.
+   Serão removidas quando os formulários forem convertidos para o Bootstrap. */
+form {
+  max-width: 400px;
+  margin: auto;
+}
+
+form button, form input, form .p-select {
+  width: 100%;
+}
+
+.title {
+  text-align: center;
+}
+
+Teste:
+
+- O fundo das páginas fica cinza claro e os formulários continuam centralizados.
+
+-----------------------------------------------------
+4. Rodapé e estrutura da página
+-----------------------------------------------------
+
+- No terminal, crie o componente do rodapé:
+
+  ng g c core/footer --inline-style --inline-template --flat --skip-tests
+
+- No arquivo footer.component.ts, altere o template:
+
+  template: `
+    <footer class="bg-success text-white text-center py-3">
+      <div class="container">
+        <p class="mb-0">&copy; 2026 - Desenvolvido na aula de Desenvolvimento Web 3</p>
+      </div>
+    </footer>
+  `,
+
+- No arquivo app.component.ts, adicione o import:
+
+import { FooterComponent } from './core/footer.component';
+
+- No mesmo arquivo, adicione o FooterComponent na lista imports do @Component:
+
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    NavbarComponent,
+    FooterComponent,
+    ToastModule,
+    ConfirmDialogModule
+  ],
+
+- No arquivo app.component.html, substitua as duas primeiras linhas
+  (app-navbar e router-outlet) por:
+
+<div class="d-flex flex-column min-vh-100">
+
+  <app-navbar *ngIf="showingNavbar()"></app-navbar>
+
+  <main class="flex-grow-1 py-4">
+    <router-outlet></router-outlet>
+  </main>
+
+  <app-footer></app-footer>
+
+</div>
+
+  O restante do arquivo (p-toast e p-confirmDialog) continua igual.
+
+  Observação: min-vh-100 faz a página ocupar pelo menos a altura da janela, e
+  flex-grow-1 faz o conteúdo (main) crescer. Assim o rodapé fica sempre na
+  parte de baixo, mesmo em páginas com pouco conteúdo.
+
+Teste:
+
+- O rodapé verde aparece na parte de baixo de todas as páginas, inclusive na
+  página de login.
+
+-----------------------------------------------------
+5. Nova barra de navegação
+-----------------------------------------------------
+
+- No arquivo navbar.component.ts, altere o import do Router:
+
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+
+- No mesmo arquivo, altere a lista imports do @Component:
+
+  imports: [
+    RouterLink,
+    RouterLinkActive
+  ],
+
+- Apague todo o conteúdo do arquivo navbar.component.css (o visual agora vem
+  do Bootstrap).
+
+- Substitua todo o conteúdo do arquivo navbar.component.html:
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
+  <div class="container">
+
+    <!-- Nome do sistema -->
+    <a class="navbar-brand fw-bold" routerLink="/dashboard">
+      <i class="bi bi-heart-pulse-fill me-1"></i> iFitness
+    </a>
+
+    <!-- Botão que abre/fecha o menu em telas pequenas -->
+    <button class="navbar-toggler" type="button" aria-label="Abrir menu"
+      (click)="displayingMenu = !displayingMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" [class.show]="displayingMenu"
+      (click)="displayingMenu = false">
+
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/dashboard" routerLinkActive="active fw-semibold">
+            <i class="bi bi-speedometer2 me-1"></i> Painel Inicial
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/activities" routerLinkActive="active fw-semibold"
+            [routerLinkActiveOptions]="{ exact: true }">
+            <i class="bi bi-table me-1"></i> Histórico
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/activities/new" routerLinkActive="active fw-semibold">
+            <i class="bi bi-plus-circle-fill me-1"></i> Nova Atividade
+          </a>
+        </li>
+      </ul>
+
+      <!-- Usuário logado (lado direito) -->
+      <ul class="navbar-nav ms-auto align-items-lg-center">
+        <li class="nav-item">
+          <span class="navbar-text me-lg-3">
+            <i class="bi bi-person-circle me-1"></i> {{ auth.jwtPayload?.name }}
+          </span>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="javascript:;" (click)="logout()">
+            <i class="bi bi-box-arrow-right me-1"></i> Sair
+          </a>
+        </li>
+      </ul>
+
+    </div>
+  </div>
+</nav>
+
+  Observações:
+    - routerLinkActive aplica as classes informadas quando o endereço atual
+    corresponde ao link. A opção exact: true no link "Histórico" evita que
+    ele fique marcado também em /activities/new.
+
+Teste:
+
+- A barra verde aparece com os links "Histórico" e "Nova Atividade"
+  funcionando, o nome do usuário e o link "Sair".
+- Diminua a largura da janela: os links somem e aparece o botão de menu.
+  Clique nele para abrir e escolha um link: o menu fecha sozinho.
+- O link "Painel Inicial" ainda leva à "Página não encontrada". Ele será
+  criado na seção 7.
+
+-----------------------------------------------------
+6. API: estatísticas das atividades
+-----------------------------------------------------
+
+- O Painel Inicial precisa de totais: distância, tempo e quantidade de
+  treinos, no geral e por tipo de atividade. Em vez de trazer todas as
+  atividades e somar no navegador, pedimos ao banco de dados que some
+  (consulta agregada, com SUM, COUNT e GROUP BY).
+
+- O código desta seção está pronto para copiar. Leia os comentários para
+  entender o que cada parte faz.
+
+Na API:
+
+- Crie o record ActivityTypeStatistic, no pacote repository.projection:
+
+package br.edu.ifspcjo.ads.web2.ifitness.repository.projection;
+
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.ActivityType;
+
+// Totais de um tipo de atividade (uma linha do resultado da consulta agrupada)
+public record ActivityTypeStatistic(
+		ActivityType type,
+		Long total,
+		Double distance,
+		Long duration) {
+}
+
+- Crie o record ActivityStatistics, no mesmo pacote:
+
+package br.edu.ifspcjo.ads.web2.ifitness.repository.projection;
+
+import java.util.List;
+
+// Resumo das atividades de um usuário, exibido no painel inicial
+public record ActivityStatistics(
+		Double totalDistance,
+		Long totalDuration,
+		Long totalActivities,
+		List<ActivityTypeStatistic> byType) {
+}
+
+- Na interface ActivityRepository, adicione os imports:
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import br.edu.ifspcjo.ads.web2.ifitness.repository.projection.ActivityTypeStatistic;
+
+- Na mesma interface, adicione o método:
+
+	@Query("select new br.edu.ifspcjo.ads.web2.ifitness.repository.projection.ActivityTypeStatistic("
+			+ "a.type, count(a), sum(a.distance), sum(a.duration)) "
+			+ "from Activity a "
+			+ "where a.user.email = :email "
+			+ "group by a.type")
+	public List<ActivityTypeStatistic> statisticsByType(@Param("email") String email);
+
+- Na classe ActivityService, adicione os imports:
+
+import br.edu.ifspcjo.ads.web2.ifitness.repository.projection.ActivityStatistics;
+import br.edu.ifspcjo.ads.web2.ifitness.repository.projection.ActivityTypeStatistic;
+
+- Na mesma classe, adicione o método:
+
+	public ActivityStatistics statistics(String email) {
+		List<ActivityTypeStatistic> byType = activityRepository.statisticsByType(email);
+
+		double totalDistance = 0;
+		long totalDuration = 0;
+		long totalActivities = 0;
+		for (ActivityTypeStatistic statistic : byType) {
+			totalDistance += statistic.distance();
+			totalDuration += statistic.duration();
+			totalActivities += statistic.total();
+		}
+
+		return new ActivityStatistics(totalDistance, totalDuration, totalActivities, byType);
+	}
+
+- Na classe ActivityResource, adicione os imports:
+
+import org.springframework.security.core.Authentication;
+
+import br.edu.ifspcjo.ads.web2.ifitness.repository.projection.ActivityStatistics;
+
+- Na mesma classe, adicione o método (antes do método findById):
+
+	@GetMapping("/statistics")
+	@PreAuthorize("hasAuthority('ROLE_SEARCH_ACTIVITY')")
+	public ActivityStatistics statistics(Authentication authentication) {
+		// authentication.getName() devolve o e-mail do usuário dono do access token
+		return activityService.statistics(authentication.getName());
+	}
+
+  Observação: o usuário não é enviado como parâmetro. A API descobre quem é
+  o usuário pelo access token, então ninguém consegue ver as estatísticas de
+  outra pessoa.
+
+-----------------------------------------------------
+7. Painel Inicial (dashboard)
+-----------------------------------------------------
+
+No Angular:
+
+- No arquivo model.ts, adicione ao final as interfaces que descrevem a
+  resposta da API:
+
+export interface ActivityTypeStatistic {
+  type: string;
+  total: number;
+  distance: number;
+  duration: number;
+}
+
+export interface ActivityStatistics {
+  totalDistance: number;
+  totalDuration: number;
+  totalActivities: number;
+  byType: ActivityTypeStatistic[];
+}
+
+- No arquivo activity.service.ts, altere o import do modelo:
+
+import { Activity, ActivityStatistics } from '../core/model';
+
+- No mesmo arquivo, adicione o método:
+
+  async statistics(): Promise<ActivityStatistics> {
+    return await firstValueFrom(
+      this.http.get<ActivityStatistics>(`${this.activitiesUrl}/statistics`)
+    );
+  }
+
+- No terminal, crie o componente:
+
+  ng g c dashboard --skip-tests
+
+- Substitua todo o conteúdo do arquivo dashboard.component.ts:
+
+import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { Title } from '@angular/platform-browser';
+
+import { ActivityService } from '../activities/activity.service';
+import { ErrorHandlerService } from '../core/error-handler.service';
+import { ActivityStatistics } from '../core/model';
+
+@Component({
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [
+    CommonModule
+  ],
+  providers: [
+    Title
+  ],
+  templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.css'
+})
+export class DashboardComponent implements OnInit {
+
+  statistics: ActivityStatistics = {
+    totalDistance: 0,
+    totalDuration: 0,
+    totalActivities: 0,
+    byType: []
+  };
+
+  typeLabels: any = {
+    CAMINHADA: 'Caminhada',
+    CICLISMO: 'Ciclismo',
+    CORRIDA: 'Corrida',
+    NATACAO: 'Natação'
+  };
+
+  constructor(
+    private activityService: ActivityService,
+    private errorHandler: ErrorHandlerService,
+    private title: Title
+  ) { }
+
+  ngOnInit(): void {
+    this.title.setTitle('Painel Inicial');
+    this.loadStatistics();
+  }
+
+  loadStatistics(): void {
+    this.activityService.statistics()
+      .then(statistics => {
+        this.statistics = statistics;
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+}
+
+- Substitua todo o conteúdo do arquivo dashboard.component.html:
+
+<div class="container">
+
+  <div class="mb-4">
+    <h2 class="fw-bold">Painel de Desempenho</h2>
+    <p class="text-muted text-center">Acompanhe o resumo das suas atividades físicas.</p>
+  </div>
+  <hr>
+
+  <!-- Linha 1: cards com os totais -->
+  <div class="row mb-2">
+    <div class="col-md-4 mb-3">
+      <div class="card p-3 shadow-sm border-start border-success border-4 text-center">
+        <h6 class="text-muted text-uppercase small">Distância Total</h6>
+        <h3 class="fw-bold text-success">{{ statistics.totalDistance | number: '1.2-2' }} Km</h3>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card p-3 shadow-sm border-start border-primary border-4 text-center">
+        <h6 class="text-muted text-uppercase small">Tempo Ativo</h6>
+        <h3 class="fw-bold text-primary">{{ statistics.totalDuration }} min</h3>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card p-3 shadow-sm border-start border-warning border-4 text-center">
+        <h6 class="text-muted text-uppercase small">Total de Treinos</h6>
+        <h3 class="fw-bold text-warning">{{ statistics.totalActivities }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 2: resumo por tipo -->
+  <div class="row mb-4">
+    <div class="col-12 mb-3">
+      <div class="card p-3 shadow-sm h-100">
+        <h5 class="card-title text-success mb-3">
+          <i class="bi bi-list-check"></i> Resumo por Tipo
+        </h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Tipo</th>
+                <th>Treinos</th>
+                <th>Distância</th>
+                <th>Duração</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of statistics.byType">
+                <td>{{ typeLabels[item.type] }}</td>
+                <td>{{ item.total }}</td>
+                <td>{{ item.distance | number: '1.2-2' }} Km</td>
+                <td>{{ item.duration }} min</td>
+              </tr>
+              <tr *ngIf="statistics.byType.length === 0">
+                <td colspan="4" class="text-center text-muted">Nenhuma atividade cadastrada.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  Observação: repare no grid do Bootstrap. Cada card usa col-md-4: em telas
+  médias ou maiores os três ficam lado a lado (4 + 4 + 4 = 12 colunas); em
+  telas pequenas, um embaixo do outro.
+
+- No arquivo app.routes.ts, adicione o import:
+
+import { DashboardComponent } from './dashboard/dashboard.component';
+
+- No mesmo arquivo, altere a primeira rota e adicione a rota dashboard logo
+  abaixo dela:
+
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  {
+    path: 'dashboard',
+    component: DashboardComponent,
+    canActivate: [authGuard],
+    data: { roles: ['ROLE_SEARCH_ACTIVITY'] }
+  },
+
+- No arquivo login-form.component.ts, altere o destino após o login:
+
+      this.router.navigate(['/dashboard']);
+
+Teste:
+
+- Faça o login: a primeira página agora é o Painel Inicial, com os três
+  cards e a tabela "Resumo por Tipo".
+- Cadastre uma nova atividade e volte ao Painel Inicial: os totais mudam.
+- Diminua a largura da janela: os cards ficam um embaixo do outro.
+- Faça o logout e digite http://localhost:4200/dashboard: você deve ser
+  levado ao login (a rota está protegida pela guarda da aula anterior).
+
+-----------------------------------------------------
+8. Gráfico de atividades por tipo (extensão)
+-----------------------------------------------------
+
+- O PrimeNG tem o componente p-chart, que usa a biblioteca Chart.js
+
+- No terminal, instale a biblioteca:
+
+  npm install chart.js
+
+- No arquivo dashboard.component.ts, adicione o import:
+
+import { ChartModule } from 'primeng/chart';
+
+- No mesmo arquivo, adicione o ChartModule na lista imports do @Component:
+
+  imports: [
+    CommonModule,
+    ChartModule
+  ],
+
+- No mesmo arquivo, adicione os atributos (abaixo de typeLabels):
+
+  chartData: any;
+
+  chartOptions = {
+    plugins: {
+      legend: { position: 'bottom' }
+    }
+  };
+
+- No mesmo arquivo, adicione o método buildChart() e chame-o depois de
+  receber as estatísticas:
+
+  loadStatistics(): void {
+    this.activityService.statistics()
+      .then(statistics => {
+        this.statistics = statistics;
+        this.buildChart();
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+  buildChart(): void {
+    this.chartData = {
+      labels: this.statistics.byType.map(item => this.typeLabels[item.type]),
+      datasets: [
+        {
+          data: this.statistics.byType.map(item => item.total),
+          backgroundColor: ['#198754', '#0d6efd', '#ffc107', '#dc3545']
+        }
+      ]
+    };
+  }
+
+  Observação: map() transforma uma lista em outra. Aqui, a lista de
+  estatísticas vira a lista de nomes (labels) e a lista de quantidades (data).
+
+- No arquivo dashboard.component.css, adicione:
+
+.chart-container {
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+- No arquivo dashboard.component.html, na "Linha 2", altere a coluna da
+  tabela de col-12 para col-md-7:
+
+    <div class="col-md-7 mb-3">
+
+- No mesmo arquivo, adicione a coluna do gráfico logo depois do fechamento
+  da coluna da tabela (antes do fechamento da div class="row mb-4"):
+
+    <div class="col-md-5 mb-3">
+      <div class="card p-3 shadow-sm h-100">
+        <h5 class="card-title text-success mb-3">
+          <i class="bi bi-pie-chart-fill"></i> Atividades por Tipo
+        </h5>
+        <div class="chart-container" *ngIf="statistics.byType.length > 0">
+          <p-chart type="doughnut" [data]="chartData" [options]="chartOptions"></p-chart>
+        </div>
+        <p class="text-center text-muted" *ngIf="statistics.byType.length === 0">
+          Nenhuma atividade cadastrada.
+        </p>
+      </div>
+    </div>
+
+Teste:
+
+- O Painel Inicial mostra a tabela à esquerda e o gráfico de rosca à direita.
+- Passe o mouse sobre o gráfico para ver a quantidade de treinos de cada tipo.
+
+-----------------------------------------------------
+9. Login e cadastros no novo layout (extensão)
+-----------------------------------------------------
+
+- Nesta seção só mudam arquivos HTML e CSS. Nenhuma lógica (arquivos .ts dos
+  formulários) é alterada. Compare cada página com a equivalente de PWD1.
+
+Passo A - Mensagens de validação
+
+- No arquivo message.component.ts, altere o template e os estilos:
+
+  template: `
+    <div *ngIf="hasError()" class="text-danger small mt-1">
+      {{ text }}
+    </div>
+  `,
+  styles: ``
+
+Passo B - Página de login
+
+- Apague todo o conteúdo do arquivo login-form.component.css.
+
+- Substitua todo o conteúdo do arquivo login-form.component.html:
+
+<div class="container">
+  <div class="col-lg-4 offset-lg-4 col-sm-12">
+
+    <form autocomplete="off" #f="ngForm">
+      <h1 class="text-center">Login</h1>
+
+      <div class="alert alert-danger" role="alert" *ngIf="msg">
+        {{ msg }}
+      </div>
+
+      <div class="input-group mb-3">
+        <span class="input-group-text">
+          <i class="bi bi-envelope"></i>
+        </span>
+        <input type="email" name="user" placeholder="E-mail" class="form-control"
+          ngModel required #user>
+      </div>
+
+      <div class="input-group mb-3">
+        <span class="input-group-text">
+          <i class="bi bi-file-lock"></i>
+        </span>
+        <input type="password" name="password" placeholder="Senha" class="form-control"
+          ngModel required #password>
+      </div>
+
+      <div class="mb-3">
+        <button type="submit" class="btn btn-primary" [disabled]="!f.valid"
+          (click)="login(user.value, password.value)">Login</button>
+      </div>
+
+      <div class="mb-3">
+        <a routerLink="/users/new" class="btn btn-secondary">Cadastrar</a>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+Passo C - Cadastro de usuário
+
+- Apague todo o conteúdo do arquivo user-register.component.css.
+
+- Substitua todo o conteúdo do arquivo user-register.component.html:
+
+<div class="container">
+  <div class="col-lg-6 offset-lg-3 col-sm-12">
+
+    <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+      <h1 class="text-center">Cadastre-se</h1>
+
+      <div class="mb-2">
+        <label for="name">Nome completo*</label>
+        <input type="text" name="name" id="name" class="form-control"
+          [(ngModel)]="user.name" #name="ngModel" required minlength="3" maxlength="50">
+        <app-message [control]="name" error="required" text="Informe um nome"></app-message>
+        <app-message [control]="name" error="minlength"
+          text="Mínimo de {{ name.errors?.minlength?.requiredLength }} caracteres. Você digitou apenas {{ name.errors?.minlength?.actualLength }}"></app-message>
+      </div>
+
+      <div class="mb-2">
+        <label for="email">E-mail*</label>
+        <input type="email" name="email" id="email" class="form-control"
+          [(ngModel)]="user.email" #email="ngModel" required>
+        <app-message [control]="email" error="required" text="Informe um e-mail"></app-message>
+      </div>
+
+      <div class="mb-2">
+        <label for="password">Senha* (de 6 a 8 caracteres)</label>
+        <input type="password" name="password" id="password" class="form-control"
+          [(ngModel)]="user.password" #password="ngModel" required minlength="6" maxlength="8">
+        <app-message [control]="password" error="required" text="Informe uma senha de 6 a 8 caracteres."></app-message>
+        <app-message [control]="password" error="minlength"
+          text="Mínimo de {{ password.errors?.minlength?.requiredLength }} caracteres. Você digitou apenas {{ password.errors?.minlength?.actualLength }}"></app-message>
+      </div>
+
+      <div class="mb-2">
+        <label>Data de Nascimento*</label>
+        <p-datepicker styleClass="w-100" inputStyleClass="w-100" dateFormat="dd/mm/yy"
+          [(ngModel)]="user.date" name="date" #date="ngModel" required>
+        </p-datepicker>
+        <app-message [control]="date" error="required" text="Informe uma data"></app-message>
+      </div>
+
+      <div class="mb-3">
+        <label>Gênero*</label>
+        <p-select styleClass="w-100" name="gender" [options]="genders" placeholder="Selecione"
+          [(ngModel)]="user.gender" #type="ngModel" required></p-select>
+      </div>
+
+      <div class="mb-2">
+        <button type="submit" class="btn btn-primary" [disabled]="f.invalid">Salvar</button>
+      </div>
+
+      <div class="mb-2">
+        <a routerLink="/login" class="btn btn-secondary w-100">Cancelar</a>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+  Observação: os campos de texto são inputs comuns com a classe form-control
+  do Bootstrap. A data e o gênero continuam sendo componentes do PrimeNG
+  (p-datepicker e p-select); a classe w-100 faz com que ocupem toda a largura.
+
+Passo D - Cadastro de atividade
+
+- Substitua todo o conteúdo do arquivo activity-register.component.html:
+
+<div class="container">
+  <div class="col-sm-12 col-lg-6 offset-lg-3">
+    <h1 class="text-center">{{ editing ? 'Edição de' : 'Nova' }} Atividade</h1>
+  </div>
+  <hr>
+  <div class="col-lg-6 offset-lg-3 col-sm-12">
+
+    <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+
+      <div class="mb-2">
+        <label>Tipo</label>
+        <p-select styleClass="w-100" [options]="types" placeholder="Selecione" name="type"
+          [(ngModel)]="activity.type" #type="ngModel" required></p-select>
+      </div>
+
+      <div class="mb-2">
+        <label>Data de realização</label>
+        <p-datepicker styleClass="w-100" inputStyleClass="w-100" dateFormat="dd/mm/yy"
+          [(ngModel)]="activity.date" name="date" #date="ngModel" required>
+        </p-datepicker>
+        <app-message [control]="date" error="required" text="Informe uma data"></app-message>
+      </div>
+
+      <div class="mb-2">
+        <label for="distance">Distância (em Km)</label>
+        <input type="number" step="0.1" class="form-control" [(ngModel)]="activity.distance"
+          name="distance" id="distance" #distance="ngModel" required>
+        <app-message [control]="distance" error="required" text="Informe uma distância"></app-message>
+      </div>
+
+      <div class="mb-3">
+        <label for="duration">Duração (em minutos)</label>
+        <input type="number" step="1" class="form-control" [(ngModel)]="activity.duration"
+          name="duration" id="duration" #duration="ngModel" required>
+        <app-message [control]="duration" error="required" text="Informe uma duração"></app-message>
+      </div>
+
+      <div class="mb-2">
+        <button type="submit" class="btn btn-primary" [disabled]="f.invalid">Salvar</button>
+      </div>
+
+      <div class="mb-2">
+        <button type="button" class="btn btn-outline-success" (click)="new(f)">Nova</button>
+      </div>
+
+      <a routerLink="/activities" class="btn btn-secondary w-100">Voltar</a>
+
+    </form>
+
+  </div>
+</div>
+
+Passo E - Listagem de atividades
+
+- Substitua todo o conteúdo do arquivo activity-list.component.html:
+
+<div class="container">
+
+  <form autocomplete="off" (ngSubmit)="filter()" class="p-grid p-fluid">
+
+    <div class="p-col-12 text-center">
+      <h1>Atividades Físicas</h1>
+    </div>
+
+        <fieldset class="filtros mb-3">
+      <legend><i class="pi pi-filter mr-2"></i>Filtros de Pesquisa</legend>
+
+      <p-select [options]="types" placeholder="Selecione" name="type" [(ngModel)]="type"
+        [style]="{ width: '100%' }">
+      </p-select>
+
+      <div class="mt-2">
+        <p-datepicker dateFormat="dd/mm/yy" [style]="{ width: '100%' }" [(ngModel)]="initialDate" name="initialDate"
+          placeholder="Data inicial">
+        </p-datepicker>
+      </div>
+
+      <div class="mt-2">
+        <p-datepicker dateFormat="dd/mm/yy" [style]="{ width: '100%' }" [(ngModel)]="finalDate" name="finalDate"
+          placeholder="Data final">
+        </p-datepicker>
+      </div>
+
+      <div class="mt-2">
+        <button pButton type="submit" label="Filtrar"></button>
+      </div>
+    </fieldset>
+  </form>
+
+
+  <div class="p-col-12">
+    <p-table [value]="activities" responsiveLayout="stack" [breakpoint]="'768px'">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Tipo</th>
+          <th>Data</th>
+          <th>Distância</th>
+          <th>Duração</th>
+          <th class="col-actions-header"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-activity>
+        <tr>
+          <td>
+            <span *ngIf="activity.type === 'CORRIDA'">
+              <img src="running_icon.png" alt="Corrida">
+            </span>
+            <span *ngIf="activity.type === 'CAMINHADA'">
+              <img src="walking_icon.png" alt="Caminhada">
+            </span>
+            <span *ngIf="activity.type === 'CICLISMO'">
+              <img src="cycling_icon.png" alt="Ciclismo">
+            </span>
+            <span *ngIf="activity.type === 'NATACAO'">
+              <img src="swimming_icon.png" alt="Natação">
+            </span>
+          </td>
+          <td>{{ activity.date }}</td>
+          <td>{{ activity.distance | number: '1.1-1'}} km</td>
+          <td>{{ activity.duration }} min</td>
+          <td class="text-center">
+            <a pButton icon="pi pi-pencil" pTooltip="Editar" tooltipPosition="top"
+              class="p-button-rounded p-button-text p-button-info mr-1"
+              [routerLink]="['/activities', activity.id]"></a>
+            <button pButton icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="top"
+              class="p-button-rounded p-button-text p-button-danger"
+              (click)="confirmRemoval(activity)"
+              [disabled]="!auth.hasPermission('ROLE_REMOVE_ACTIVITY')"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage" let-columns>
+        <tr>
+          <td>
+            Nenhuma atividade cadastrada.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+  <div class="p-col-12 mt-3 text-center">
+    <p><a pButton label="Nova Atividade" icon="pi pi-plus" routerLink="/activities/new"></a></p>
+  </div>
+</div>
+
+- Adicione no arquivo do activity-list.component.css:
+ 
+.filtros {
+  width: 40%;
+  margin-left: auto;
+  margin-right: auto;   /* centraliza horizontalmente */
+}
+
+/* opcional: em telas pequenas 40% fica estreito demais */
+@media (max-width: 768px) {
+  .filtros {
+    width: 100%;
+  }
+}
+
+Passo F - Removendo as regras temporárias
+
+- No arquivo styles.css, apague o bloco marcado como TEMPORÁRIO (as regras
+  form, form button/input/.p-select e .title) e adicione no lugar:
+
+/* Botões dos formulários ocupam toda a largura */
+form .btn {
+  width: 100%;
+}
+
+Teste:
+
+- Página de login: campos com ícones, botão azul "Login" e cinza "Cadastrar".
+  Informe uma senha errada: a mensagem aparece em uma caixa vermelha.
+- Cadastro de usuário e cadastro de atividade: formulário centralizado,
+  ocupando metade da largura em telas grandes e toda a largura no celular.
+- Cadastre uma atividade e edite-a: tudo deve funcionar como antes.
+- A página "Histórico" ainda está com o visual antigo e os filtros ficam
+  desalinhados depois do Passo E. Ela será refeita na próxima aula de
+  conteúdo, junto com a paginação.
+
+-----------------------------------------------------
+10. Exercício Prático de Fixação
+-----------------------------------------------------
+
+1) Adicione ao Painel Inicial um quarto card, "Média por Treino", com a
+   distância média por treino (distância total dividida pelo total de
+   treinos). Ajuste as colunas para que os quatro cards fiquem lado a lado em
+   telas grandes.
+
+   Dicas: crie um método no dashboard.component.ts que faça a conta e cuide
+   da divisão por zero quando não houver treinos; quatro colunas iguais usam
+   col-md-3.
+
+2) Na tabela "Resumo por Tipo", mostre o ícone do tipo de atividade ao lado
+   do nome, usando as mesmas imagens da página "Histórico".
+
+3) Desafio (pode ser usado no Projeto Prático - Etapa 2): crie um gráfico de
+   linha com a distância percorrida por dia, como o "Histórico de Distância"
+   de PWD1. Será preciso criar uma nova consulta na API.

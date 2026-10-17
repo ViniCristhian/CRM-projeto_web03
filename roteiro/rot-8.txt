@@ -1,0 +1,395 @@
+Roteiro - Aula 08/10/2026
+
+Objetivo da aula: corrigir o logout e impedir o acesso às páginas por quem
+não está logado ou não tem permissão.
+
+Ordem da aula:
+  1. Reproduzindo o problema
+  2. Corrigindo o logout
+  3. Protegendo rotas com guarda de rotas (CanActivate)
+  4. Protegendo rotas por permissão
+  5. Protegendo componentes (extensão)
+  6. Exercício Prático de Fixação
+
+Cada seção termina com um "Teste". Só avance depois que o teste funcionar.
+
+-----------------------------------------------------
+1. Reproduzindo o problema
+-----------------------------------------------------
+
+- Inicie a API e o projeto Angular. No navegador, abra as Ferramentas do
+  Desenvolvedor (F12) e deixe a aba Console visível.
+
+- Faça o login e clique em Logout. Observe o erro no Console:
+
+  ERROR TypeError: Cannot read properties of null (reading 'accessToken')
+
+- Agora, já deslogado, digite na barra de endereço:
+
+  http://localhost:4200/activities
+
+  A página de atividades abre, mesmo sem usuário logado. A lista vem vazia e
+  aparece uma mensagem de erro, mas a página não deveria nem abrir.
+
+- Por que isso acontece? São dois problemas diferentes:
+
+  a) O logout tem defeitos (vamos corrigir na seção 2).
+  b) Nenhuma rota é protegida: o Angular exibe qualquer componente para
+     qualquer pessoa (vamos corrigir nas seções 3 e 4).
+
+-----------------------------------------------------
+2. Corrigindo o logout
+-----------------------------------------------------
+
+Passo A - Uma única instância do AuthService
+
+- O AuthService já é declarado com providedIn: 'root', ou seja, existe uma
+  instância única para a aplicação toda. Porém, ele também está na lista
+  providers do AppComponent, o que cria uma SEGUNDA instância, usada só pelos
+  componentes. Resultado: os componentes guardam os dados do usuário em uma
+  instância, e o interceptor e os serviços leem de outra.
+
+- No arquivo app.component.ts, remova o import do AuthService:
+
+import { AuthService } from './security/auth.service';
+
+- No mesmo arquivo, remova o AuthService da lista de providers:
+
+  providers: [
+    MessageService,
+    ConfirmationService,
+    ErrorHandlerService,
+    { provide: LOCALE_ID, useValue: 'pt-BR' }
+  ],
+
+Passo B - Limpando os dados do usuário no logout
+
+- O método logout() atual tenta ler um access token na resposta da API, mas
+  a API não devolve nada no logout (por isso o erro no Console). Além disso,
+  o atributo jwtPayload nunca é limpo.
+
+- No arquivo auth.service.ts, adicione o método clearAccessToken() e
+  substitua o método logout():
+
+  clearAccessToken(): void {
+    localStorage.removeItem('token');
+    this.jwtPayload = null;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.http.post(this.logoutUrl, {}, { withCredentials: true })
+      );
+    } finally {
+      this.clearAccessToken();
+    }
+  }
+
+  Observação: o bloco finally garante que os dados locais sejam apagados
+  mesmo que a API esteja fora do ar.
+
+Passo C - Esperando o logout terminar antes de navegar
+
+- No arquivo navbar.component.ts, altere o método logout():
+
+  logout() {
+    this.auth.logout()
+      .catch(error => console.error('Erro ao encerrar a sessão na API', error))
+      .then(() => this.router.navigate(['/login']));
+  }
+
+Passo D - O logout não precisa de access token
+
+- A requisição de logout só precisa do cookie do refresh token. Hoje o
+  interceptor renova o access token antes de fazer o logout, o que é um
+  trabalho desnecessário.
+
+- No arquivo ifitness-http-interceptor.ts, altere o primeiro if do método
+  intercept():
+
+    // 1. Se for Login, Refresh ou Logout, passa direto sem mexer
+    if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh')
+        || req.url.includes('/auth/logout') || req.url.includes('/users')) {
+      return next.handle(req);
+    }
+
+- No arquivo app.config.ts, adicione a URL de logout em disallowedRoutes:
+
+          disallowedRoutes: [
+            'http://localhost:8080/auth/login',
+            'http://localhost:8080/auth/refresh',
+            'http://localhost:8080/auth/logout',
+            'http://localhost:8080/users'
+          ]
+
+Teste:
+
+- Faça o login e depois o logout, com o Console aberto. Não deve aparecer
+  nenhum erro.
+- Na aba Application (Aplicativo) > Local Storage, a chave token não deve
+  mais existir depois do logout.
+- Na aba Network (Rede), o logout deve gerar apenas a requisição logout,
+  sem uma requisição refresh antes.
+- Digite novamente http://localhost:4200/activities. A página AINDA abre.
+  Esse é o problema (b), que resolvemos a seguir.
+
+-----------------------------------------------------
+3. Protegendo rotas com guarda de rotas (CanActivate)
+-----------------------------------------------------
+
+- Uma guarda de rota (guard) é uma função que o Angular executa ANTES de
+  abrir uma rota. Ela responde à pergunta "pode entrar?":
+
+  - se retornar true, a rota é aberta;
+  - se retornar um endereço (UrlTree), o usuário é redirecionado para ele.
+
+- No terminal, crie a guarda (g g = generate guard):
+
+  ng g g security/auth --skip-tests
+
+  Na pergunta sobre o tipo, deixe marcado CanActivate e tecle Enter.
+
+- No arquivo auth.guard.ts, altere a implementação:
+
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+
+import { AuthService } from './auth.service';
+
+export const authGuard: CanActivateFn = async (route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  // 1. Access token ausente ou expirado: tenta renovar com o refresh token (cookie)
+  if (auth.isInvalidAccessToken()) {
+    try {
+      await auth.getNewAccessToken();
+    } catch {
+      // Não foi possível renovar: o usuário não está logado
+      auth.clearAccessToken();
+      return router.createUrlTree(['/login']);
+    }
+  }
+
+  return true;
+};
+
+  Observações:
+  - A guarda é uma função, e não uma classe. Por isso os serviços são obtidos
+    com inject(), e não pelo construtor.
+  - O access token dura pouco tempo. Token expirado não significa usuário
+    deslogado: se o cookie do refresh token ainda for válido, a guarda
+    renova o access token e deixa entrar. Depois do logout o cookie não
+    existe mais, a renovação falha e o usuário vai para o login.
+
+- No arquivo app.routes.ts, adicione o import:
+
+import { authGuard } from './security/auth.guard';
+
+- No mesmo arquivo, adicione a propriedade canActivate nas três rotas de
+  atividades. Mantenha a ordem atual das rotas.
+
+export const routes: Routes = [
+  { path: '', redirectTo: 'activities', pathMatch: 'full' },
+  {
+    path: 'activities/:id',
+    component: ActivityRegisterComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'activities',
+    component: ActivitiesListComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'activities/new',
+    component: ActivityRegisterComponent,
+    canActivate: [authGuard]
+  },
+  { path: 'users/new', component: UserRegisterComponent },
+  { path: 'login', component: LoginFormComponent },
+  { path: 'page-not-found', component: PageNotFoundComponent },
+  { path: '**', redirectTo: 'page-not-found'} // importante que seja a última rota
+];
+
+  As rotas login e users/new continuam sem guarda: precisam ser acessadas
+  por quem ainda não está logado.
+
+Teste:
+
+- Faça o logout e digite http://localhost:4200/activities. Você deve ser
+  levado para a página de login.
+- Repita com http://localhost:4200/activities/new.
+- Faça o login: a lista de atividades abre normalmente.
+- Faça o logout e entre com OUTRO usuário, sem recarregar a página (sem F5).
+  O nome exibido no menu deve ser o do novo usuário.
+
+-----------------------------------------------------
+4. Protegendo rotas por permissão
+-----------------------------------------------------
+
+- Até aqui a guarda responde "está logado?". Agora ela também vai responder
+  "tem permissão para esta página?".
+
+- As permissões do usuário já vêm dentro do access token, no campo
+  authorities, separadas por espaço. Exemplo:
+
+  "authorities": "ROLE_REGISTER_ACTIVITY ROLE_REMOVE_ACTIVITY ROLE_SEARCH_ACTIVITY"
+
+  Dica: cole o seu token (Local Storage) no site https://jwt.io para ver.
+
+- No arquivo auth.service.ts, adicione os métodos:
+
+  hasPermission(permission: string): boolean {
+    const authorities: string = this.jwtPayload?.authorities ?? '';
+    return authorities.split(' ').includes(permission);
+  }
+
+  hasAnyPermission(roles: string[]): boolean {
+    for (const role of roles) {
+      if (this.hasPermission(role)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+- No terminal, crie o componente da página de acesso negado:
+
+  ng g c core/not-authorized --inline-style --inline-template --flat --skip-tests
+
+- No arquivo not-authorized.component.ts, altere o template:
+
+  template: `
+    <div class="container">
+      <h1 class="text-center">Acesso negado!</h1>
+    </div>
+  `,
+
+- No arquivo app.routes.ts, adicione o import:
+
+import { NotAuthorizedComponent } from './core/not-authorized.component';
+
+- No mesmo arquivo, informe em cada rota protegida quais permissões dão
+  acesso a ela (propriedade data) e adicione a rota not-authorized:
+
+export const routes: Routes = [
+  { path: '', redirectTo: 'activities', pathMatch: 'full' },
+  {
+    path: 'activities/:id',
+    component: ActivityRegisterComponent,
+    canActivate: [authGuard],
+    data: { roles: ['ROLE_REGISTER_ACTIVITY'] }
+  },
+  {
+    path: 'activities',
+    component: ActivitiesListComponent,
+    canActivate: [authGuard],
+    data: { roles: ['ROLE_SEARCH_ACTIVITY'] }
+  },
+  {
+    path: 'activities/new',
+    component: ActivityRegisterComponent,
+    canActivate: [authGuard],
+    data: { roles: ['ROLE_REGISTER_ACTIVITY'] }
+  },
+  { path: 'users/new', component: UserRegisterComponent },
+  { path: 'login', component: LoginFormComponent },
+  { path: 'not-authorized', component: NotAuthorizedComponent },
+  { path: 'page-not-found', component: PageNotFoundComponent },
+  { path: '**', redirectTo: 'page-not-found'} // importante que seja a última rota
+];
+
+- No arquivo auth.guard.ts, adicione a verificação de permissão antes do
+  return true:
+
+  // 2. Está logado. Tem alguma das permissões exigidas pela rota?
+  const roles = route.data['roles'];
+  if (roles && !auth.hasAnyPermission(roles)) {
+    return router.createUrlTree(['/not-authorized']);
+  }
+
+  return true;
+
+Teste:
+
+- Faça o login: a lista de atividades e o cadastro abrem normalmente, pois
+  os usuários cadastrados têm essas permissões.
+- Para ver o acesso negado, troque temporariamente a permissão da rota
+  activities/:id para uma que não existe:
+
+    data: { roles: ['ROLE_TESTE'] }
+
+  Clique em "Nova Atividade": deve aparecer "Acesso negado!".
+  (O endereço /activities/new é atendido pela rota activities/:id, porque
+  ela aparece primeiro na lista e o Angular usa a primeira que combinar.)
+  Depois do teste, volte para ROLE_REGISTER_ACTIVITY.
+
+-----------------------------------------------------
+5. Protegendo componentes
+-----------------------------------------------------
+
+- Além de bloquear páginas inteiras, podemos desabilitar partes da tela.
+  Vamos desabilitar o botão de exclusão para quem não tem a permissão
+  ROLE_REMOVE_ACTIVITY.
+
+Na API:
+
+- Hoje todos os usuários têm todas as permissões de atividade. Para testar,
+  vamos retirar a permissão de exclusão de um usuário.
+
+- Parar o servidor.
+
+- Crie o arquivo V04__remover_permissao_de_exclusao.sql na pasta
+  src/main/resources/db/migration:
+
+-- juliana: deixa de ter a permissão ROLE_REMOVE_ACTIVITY (id 5)
+DELETE FROM user_permission WHERE id_user = 2 AND id_permission = 5;
+
+- Reinicie a API para que a migração seja executada.
+
+- Antes de alterar o Angular, entre como Juliana (julianasilva@ifsp.edu.br) e
+  tente excluir uma atividade. A API recusa (erro 403) e aparece a mensagem
+  "Você não tem permissão para executar esta ação". A segurança de verdade
+  está na API; o que faremos no Angular é melhorar a experiência do usuário,
+  evitando que ele clique em algo que não pode fazer.
+
+No Angular:
+
+- No arquivo activities-list.component.ts, altere o AuthService do
+  construtor de private para public, para que o HTML possa usá-lo:
+
+    public auth: AuthService
+
+- No arquivo activities-list.component.html, altere o botão de exclusão:
+
+            <button pButton icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="top"
+              class="p-button-rounded p-button-text p-button-danger"
+              (click)="confirmRemoval(activity)"
+              [disabled]="!auth.hasPermission('ROLE_REMOVE_ACTIVITY')"></button>
+
+Teste:
+
+- Entre como Juliana: o botão de exclusão aparece desabilitado.
+- Entre com outro usuário: o botão continua funcionando.
+
+-----------------------------------------------------
+6. Exercício Prático de Fixação
+-----------------------------------------------------
+
+1) Um usuário que já está logado ainda consegue abrir a página de login
+   digitando http://localhost:4200/login. Crie uma segunda guarda
+   (ng g g security/logged --skip-tests) que redirecione o usuário logado
+   para /activities e aplique-a nas rotas login e users/new.
+
+   Dica: use auth.isInvalidAccessToken() para saber se há um access token
+   válido. Nesta guarda não é necessário tentar renovar o token.
+
+2) Esconda o botão "Nova Atividade" da lista de atividades para quem não tem
+   a permissão ROLE_REGISTER_ACTIVITY.
+
+   Dica: use *ngIf com auth.hasPermission(...).
+
+3) Para pensar: se o botão de exclusão está desabilitado no Angular, por que
+   a API também precisa verificar a permissão (@PreAuthorize)?

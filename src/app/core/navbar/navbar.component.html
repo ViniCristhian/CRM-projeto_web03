@@ -1,17 +1,31 @@
 <nav class="navbar">
+  <div class="container navbar-shell">
+    <div class="brand-wrap">
+      <span class="brand-mark">CRM</span>
+      <span class="brand-subtitle">Gestão comercial</span>
+    </div>
 
-  <div class="container">
-    <div class="p-grid">
-      <div class="p-col-12">
-        <a href="javascript:;" class="navbar-toggle" (click)="displayingMenu = !displayingMenu">
-	  <i class="pi pi-bars"></i></a>
-      </div>
+    <div class="nav-links desktop-nav">
+      <a routerLink="/home" routerLinkActive="active">Início</a>
+      <a routerLink="/clients" routerLinkActive="active">Clientes</a>
+      <a routerLink="/contacts" routerLinkActive="active">Contatos</a>
+      <a routerLink="/opportunities" routerLinkActive="active">Oportunidades</a>
+    </div>
+
+    <div class="nav-actions">
+      <span class="user-pill">{{ username }}</span>
+      <button type="button" class="navbar-toggle" (click)="displayingMenu = !displayingMenu" aria-label="Abrir menu">
+        <i class="pi pi-bars"></i>
+      </button>
     </div>
   </div>
 
   <ul class="navbar-menu" [hidden]="!displayingMenu">
-    <li class="navbar-user">{{ auth.jwtPayload?.nome }}</li>
+    <li class="navbar-user">{{ username }}</li>
+    <li class="navbar-menuitem"><a routerLink="/home" routerLinkActive="active" (click)="displayingMenu = false">Início</a></li>
+    <li class="navbar-menuitem"><a routerLink="/clients" routerLinkActive="active" (click)="displayingMenu = false">Clientes</a></li>
+    <li class="navbar-menuitem"><a routerLink="/contacts" routerLinkActive="active" (click)="displayingMenu = false">Contatos</a></li>
+    <li class="navbar-menuitem"><a routerLink="/opportunities" routerLinkActive="active" (click)="displayingMenu = false">Oportunidades</a></li>
     <li class="navbar-menuitem"><a href="javascript:;" (click)="logout()">Logout</a></li>
   </ul>
-
 </nav>

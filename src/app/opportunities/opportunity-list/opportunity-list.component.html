@@ -1,0 +1,18 @@
+<div class="container page-shell">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Oportunidades</h1>
+    </div>
+  </div>
+
+  <div class="card surface opportunities-list">
+    <div class="opportunity-item" *ngFor="let opportunity of opportunities">
+      <div>
+        <h3>{{ opportunity.nome }}</h3>
+        <span class="status">{{ opportunity.status }}</span>
+      </div>
+      <strong>{{ opportunity.valor }}</strong>
+    </div>
+  </div>
+</div>

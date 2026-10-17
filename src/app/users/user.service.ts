@@ -9,7 +9,7 @@ import { User } from '../core/model';
 })
 export class UserService {
 
-  usersUrl = 'http://localhost:8080/usuario';
+  usersUrl = 'http://localhost:8080/usuario/register';
 
   constructor(private http: HttpClient) { }
 

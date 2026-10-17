@@ -1,12 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { AuthService } from '../auth.service';
-
-import { JwtHelperService, JwtModule } from '@auth0/angular-jwt';
-import { Router, RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-login-form',
@@ -18,30 +16,28 @@ import { Router, RouterModule } from '@angular/router';
     ButtonModule,
     RouterModule
   ],
-  providers: [
-    JwtHelperService
-  ],
   templateUrl: './login-form.component.html',
   styleUrl: './login-form.component.css'
 })
 export class LoginFormComponent {
-
-  jwtPayload: any;
-   msg: any;
+  msg = '';
 
   constructor(
     private auth: AuthService,
     private router: Router
   ) {}
 
-  login(user: string, password: string) {
-    this.auth.login(user, password)
-    .then(() => {
-      this.router.navigate(['/home']);
-    })
-    .catch(() => {
-      this.msg = 'Usuário e/ou senha inválida!';
-    });
-  }
+  async login(user: string, password: string): Promise<void> {
+    if (!user || !password) {
+      this.msg = 'Informe o e-mail e a senha.';
+      return;
+    }
 
+    try {
+      await this.auth.login(user, password);
+      this.router.navigate(['/home']);
+    } catch (error: any) {
+      this.msg = typeof error === 'string' ? error : 'Usuário e/ou senha inválida!';
+    }
+  }
 }
