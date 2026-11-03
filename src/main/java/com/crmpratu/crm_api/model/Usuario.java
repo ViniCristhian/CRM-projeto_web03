@@ -16,7 +16,6 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -39,8 +38,7 @@ public class Usuario {
     @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
     private String senha;
 
-    @Column(name = "ativo")
-    @ColumnDefault("true")
+    @Column(name = "ativo", nullable = false)
     private boolean ativo;
 
     @CreationTimestamp
@@ -50,13 +48,12 @@ public class Usuario {
 
     @ManyToOne
     @JoinColumn(name = "id_perfil", nullable = false)
-    @ColumnDefault("4")
     @JsonIgnoreProperties("usuarios")
     private Perfil perfil;
 
     public Usuario() {
         this.ativo = true;
-        this.perfil = new Perfil(4L);
+        this.perfil = new Perfil(1L);
     }
 
     public Long getId() {

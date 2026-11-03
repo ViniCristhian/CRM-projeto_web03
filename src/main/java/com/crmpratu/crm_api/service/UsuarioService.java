@@ -1,6 +1,8 @@
 package com.crmpratu.crm_api.service;
 
+import com.crmpratu.crm_api.model.Perfil;
 import com.crmpratu.crm_api.model.Usuario;
+import com.crmpratu.crm_api.repository.PerfilRepository;
 import com.crmpratu.crm_api.repository.UsuarioRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -11,10 +13,12 @@ import org.springframework.stereotype.Service;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PerfilRepository perfilRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PerfilRepository perfilRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.perfilRepository = perfilRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -23,6 +27,12 @@ public class UsuarioService {
     }
 
     public Usuario create(Usuario usuario) {
+        if (usuario.getPerfil() == null || usuario.getPerfil().getId() == null) {
+            Perfil perfilPadrao = perfilRepository.findById(1L)
+                    .orElseGet(() -> perfilRepository.findById(4L).orElseThrow());
+            usuario.setPerfil(perfilPadrao);
+        }
+
         if (usuario.getSenha() != null && !usuario.getSenha().isBlank())
             usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
 
