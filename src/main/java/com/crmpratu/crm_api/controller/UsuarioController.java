@@ -36,7 +36,6 @@ public class UsuarioController {
 		return usuarioRepository.findAll();
 	}
 
-	@PreAuthorize("hasAuthority('ROLE_REGISTER_USER')")
 	@PostMapping("/register")
 	public Usuario create(@Valid @RequestBody Usuario usuario) {
 		return usuarioService.create(usuario);
