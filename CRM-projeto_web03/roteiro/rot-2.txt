@@ -1,0 +1,543 @@
+Roteiro - Aula 06/08/2026
+
+-----------------------------------------------------------
+Criação do módulo de segurança e protótipo da tela de login
+-----------------------------------------------------------
+
+- No terminal
+
+ng g c security/login-form --skip-tests (c component) 
+
+- Código form-login.component.ts
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+
+@Component({
+  selector: 'app-login-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputTextModule,
+    ButtonModule
+  ],
+  templateUrl: './login-form.component.html',
+  styleUrl: './login-form.component.css'
+})
+export class LoginFormComponent {
+
+  constructor() { }
+
+  login(user: string, password: string) {
+  }
+
+}
+
+- Código login-form.component.html
+
+<div class="container">
+
+  <form autocomplete="off" #f="ngForm">
+    <div class="p-grid p-fluid login">
+
+      <div class="p-col-12 title">
+        <h1>Login</h1>
+      </div>
+
+      <div class="p-col-12">
+        <p><input pInputText type="email" name="user" placeholder="E-mail"
+          ngModel required #user>
+        </p>
+      </div>
+
+      <div class="p-col-12">
+        <p>
+          <input pInputText type="password" name="password" placeholder="Senha"
+          ngModel required #password>
+        </p>
+
+      </div>
+
+      <div class="p-col-12">
+        <p><button pButton type="submit" label="Login" [disabled]="!f.valid"
+          (click)="login(user.value, password.value)"></button>
+        </p>
+        <a pButton label="Cadastrar"></a>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+
+- Código form-login.component.css:
+
+.login {
+  max-width: 400px;
+  margin: auto;
+}
+
+.title {
+  text-align: center;
+}
+
+button, a, input{
+  width: 100%;
+}
+
+- Em app.component.html, colocar a tag:
+
+<app-login-form></app-login-form>
+
+Comentar:
+<app-activities-list></app-activities-list>
+
+- Importar o componente no arquivo app.component.ts
+
+imports: [
+    RouterOutlet,
+    ActivitiesListComponent,
+    LoginFormComponent
+  ],
+
+------------------------------------------------------------
+Implementando o serviço de autenticação com OAuth 2
+------------------------------------------------------------
+
+- No terminal:
+
+ng g s security/auth --skip-tests
+
+- Adicionar o provideHttpClient() nos providers e importar no app.config.ts
+
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideHttpClient(),
+    provideRouter(routes),
+    provideAnimationsAsync(),
+        providePrimeNG({
+            theme: {
+                preset: Aura
+            }
+        })
+  ]
+
+- Adicionar o provider AuthService no app.component.ts
+
+imports: [
+    RouterOutlet,
+    ActivitiesListComponent,
+    LoginFormComponent
+  ],
+  providers: [
+    AuthService
+  ],
+
+- Código auth.service.ts
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+
+  oauthTokenUrl = 'http://localhost:8080/auth/login';
+
+  constructor(private http: HttpClient) { }
+
+  async login(user: string, password: string): Promise<void> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const body = {
+      "username": user,
+      "password": password
+    };
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(this.oauthTokenUrl, body, { headers })
+      );
+      console.log(response);
+    } catch (response: any) {
+      console.log(response);
+    };
+  }
+
+}
+
+
+- Alterar código form-login.compenent.ts
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { AuthService } from '../auth.service';
+
+@Component({
+  selector: 'app-login-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputTextModule,
+    ButtonModule
+  ],
+  templateUrl: './login-form.component.html',
+  styleUrl: './login-form.component.css'
+})
+export class LoginFormComponent {
+
+  constructor(private auth: AuthService) { }
+
+  login(user: string, password: string): void {
+    this.auth.login(user, password);
+  }
+
+}
+
+
+Testar: Console do navegador. 
+
+------------------------------------------------------------
+Decodificando o JWT e armazenando no Local Storage
+------------------------------------------------------------
+
+- Instalar a dependência angular-jwt (utilitário - uma das coisas decodificar o JWT)
+
+npm install @auth0/angular-jwt
+
+- Alterar o arquivo app.config.ts:
+
+import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { providePrimeNG } from 'primeng/config';
+import Aura from '@primeng/themes/aura';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { JwtHelperService, JwtModule } from '@auth0/angular-jwt';
+
+export function tokenGetter(): any {
+  return localStorage.getItem('token');
+}
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideHttpClient(
+      withInterceptorsFromDi() // Importante para que os interceptores do JwtModule funcionem
+    ),
+    provideRouter(routes),
+    importProvidersFrom(
+      JwtModule.forRoot({
+        config: {
+          tokenGetter: tokenGetter,
+          allowedDomains: ['localhost:8080'],
+          disallowedRoutes: ['http://localhost:8080/auth/login']
+        }
+      })
+    ),
+    JwtHelperService,
+    provideAnimationsAsync(),
+    providePrimeNG({
+      theme: {
+        preset: Aura
+      }
+    })
+  ]
+};
+
+- Alterar o auth.service.ts
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { JwtHelperService } from '@auth0/angular-jwt';
+import { firstValueFrom } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+
+  oauthTokenUrl = 'http://localhost:8080/auth/login';
+  jwtPayload: any;
+
+  constructor(
+    private http: HttpClient,
+    private jwtHelper: JwtHelperService
+  ) {
+    this.loadToken();
+  }
+
+  async login(user: string, password: string): Promise<void> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const body = {
+      "username": user,
+      "password": password
+    };
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.post(this.oauthTokenUrl, body, { headers })
+      );
+      console.log(response);
+      this.storeToken(response['accessToken']);
+    } catch (response: any) {
+      console.log(response);
+    };
+  }
+
+  private storeToken(token: string): void {
+    this.jwtPayload = this.jwtHelper.decodeToken(token);
+    localStorage.setItem('token', token);
+  }
+
+  private loadToken(): void {
+    const token = localStorage.getItem('token');
+
+    if (token) {
+      this.storeToken(token);
+    }
+  }
+
+}
+
+- Alterar o arquivo login-form.component.ts
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { AuthService } from '../auth.service';
+
+import { JwtHelperService, JwtModule } from '@auth0/angular-jwt';
+
+@Component({
+  selector: 'app-login-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputTextModule,
+    ButtonModule
+  ],
+  providers: [
+    JwtHelperService
+  ],
+  templateUrl: './login-form.component.html',
+  styleUrl: './login-form.component.css'
+})
+export class LoginFormComponent {
+
+  jwtPayload: any;
+
+  constructor(private auth: AuthService) {
+    this.jwtPayload = this.auth.jwtPayload;
+  }
+
+  login(user: string, password: string): void {
+    this.auth.login(user, password);
+  }
+
+}
+
+- Adicionar no início do login-form.component.html
+
+{{ jwtPayload | json }}
+
+------------------------------------------------------------
+Tratando casos de erros e sucesso de autenticação
+------------------------------------------------------------
+
+- Alterar o bloco catch do post no auth.service.ts
+
+
+    } catch (response: any) {
+      if (response.status === 400 && response.error === 'invalid_grant') {
+        return Promise.reject('Usuário e/ou senha inválida!');
+      }
+      return Promise.reject(response);
+    }
+
+- Alterar login-form.component.ts
+
+  msg: any;
+
+  constructor(
+    private auth: AuthService) {
+  }
+
+  login(user: string, password: string) {
+    this.auth.login(user, password)
+    .then(() => {
+      this.msg = 'redirecionar para /activities';
+    })
+    .catch(() => {
+      this.msg = 'Usuário e/ou senha inválida!';
+    });
+  }
+
+- Alterar início do login-form.component.html
+
+{{ msg }}
+
+------------------------------------------------
+Criando o serviço de Atividade
+------------------------------------------------
+
+- No terminal:
+
+ng g s activities/activity --skip-tests
+
+- Código activity.service.ts
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ActivityService {
+
+  activitiesUrl = 'http://localhost:8080/activities';
+
+  constructor(private http: HttpClient) { }
+
+  async list(): Promise<any> {
+    return await firstValueFrom(this.http.get(this.activitiesUrl));
+  }
+  
+}
+
+- Alterar código activities-list.component.ts
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
+import { ActivityService } from '../activity.service';
+
+@Component({
+  selector: 'app-activities-list',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ButtonModule,
+    TableModule,
+    TooltipModule
+  ],
+  templateUrl: './activities-list.component.html',
+  styleUrl: './activities-list.component.css'
+})
+export class ActivitiesListComponent {
+
+  activities = [];
+
+  constructor(private activityService: ActivityService){ }
+
+  ngOnInit(): void {
+    this.list();
+  }
+
+  list(): void {
+    this.activityService.list()
+      .then(result => {
+        this.activities = result;
+      });
+  }
+
+}
+
+- Alterar activities-list.component.html
+
+	    <td>{{ activity.user.name }}</td>
+            <td>{{ activity.type }}</td>
+            <td>{{ activity.date }}</td>
+            <td>{{ activity.distance }}</td>
+            <td>{{ activity.duration }}</td>
+
+- Alterar app.component.html:
+
+<!--<app-login-form></app-login-form>-->
+
+<app-activities-list></app-activities-list>
+
+----------------------------------------------------------
+Configurando rotas na aplicação
+----------------------------------------------------------
+
+- Alterar o app-routes.ts:
+
+import { Routes } from '@angular/router';
+import { ActivitiesListComponent } from './activities/activities-list/activities-list.component';
+import { LoginFormComponent } from './security/login-form/login-form.component';
+
+export const routes: Routes = [
+  { path: 'activities', component: ActivitiesListComponent },
+  { path: 'login', component: LoginFormComponent }
+
+];
+
+- No login-form.component.ts, alterar o método construtor e o método login:
+
+  constructor(
+    private auth: AuthService,
+    private router: Router
+  ) {}
+
+  login(user: string, password: string) {
+    this.auth.login(user, password)
+    .then(() => {
+      this.router.navigate(['/activities']);
+    })
+    .catch(() => {
+      this.msg = 'Usuário e/ou senha inválida!';
+    });
+  }
+
+- No app.component.html, trocar para:
+
+<router-outlet></router-outlet>
+
+- Alterar o arquivo app.component.ts:
+
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+
+import { AuthService } from './security/auth.service';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    RouterOutlet
+  ],
+  providers: [
+    AuthService
+  ],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
+})
+export class AppComponent {
+  title = 'ifitness-ui';
+
+}
+
+--------------------------------------------------------

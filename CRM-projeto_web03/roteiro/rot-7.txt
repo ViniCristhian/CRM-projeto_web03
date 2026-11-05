@@ -1,0 +1,483 @@
+Roteiro - Aula 24/09/2026
+
+-----------------------------------------------------
+Implementando o Filtro de Atividades
+-----------------------------------------------------
+
+Na API REST:
+
+- Criar a classe ActivityFilter, no pacote repository.filter:
+
+package br.edu.ifspcjo.ads.web2.ifitness.repository.filter;
+
+import java.time.LocalDate;
+
+import org.springframework.format.annotation.DateTimeFormat;
+
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.ActivityType;
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.User;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+
+public class ActivityFilter {
+	
+	private User user;
+	
+	@Enumerated(EnumType.STRING)
+	private ActivityType type;
+	
+	@DateTimeFormat(pattern = "yyyy-MM-dd")
+	private LocalDate initialDate;
+	
+	@DateTimeFormat(pattern = "yyyy-MM-dd")
+	private LocalDate finalDate;
+
+	public ActivityType getType() {
+		return type;
+	}
+
+	public void setType(ActivityType type) {
+		this.type = type;
+	}
+
+	public LocalDate getInitialDate() {
+		return initialDate;
+	}
+
+	public void setInitialDate(LocalDate initialDate) {
+		this.initialDate = initialDate;
+	}
+
+	public LocalDate getFinalDate() {
+		return finalDate;
+	}
+
+	public void setFinalDate(LocalDate finalDate) {
+		this.finalDate = finalDate;
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+	}
+
+}
+
+- Alterar o método list para search na classe ActivityResource:
+
+	@GetMapping
+	@PreAuthorize("hasAuthority('ROLE_SEARCH_ACTIVITY')")
+	public List<Activity> filter(ActivityFilter activityFilter){
+		return activityService.filter(activityFilter);
+	}
+	
+- Adicionar o método search na classe ActivityService:
+
+	public List<Activity> filter(ActivityFilter activityFilter){
+		return activityRepository.filter(activityFilter);
+	}
+
+
+- Alterar a declaração da interface ActivityRepository:
+
+package br.edu.ifspcjo.ads.web2.ifitness.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.Activity;
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.User;
+import br.edu.ifspcjo.ads.web2.ifitness.repository.activity.ActivityRepositoryQuery;
+
+public interface ActivityRepository extends JpaRepository<Activity, Long>, ActivityRepositoryQuery {
+
+	public List<Activity> findByUser(User user);
+	
+}
+
+- Criar a interface ActivityRepositoryQuery no pacote repository.activity:
+
+package br.edu.ifspcjo.ads.web2.ifitness.repository.activity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import br.edu.ifspcjo.ads.web2.ifitness.domain.model.Activity;
+import br.edu.ifspcjo.ads.web2.ifitness.repository.filter.ActivityFilter;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+
+public class ActivityRepositoryImpl implements ActivityRepositoryQuery {
+
+	@PersistenceContext
+	private EntityManager manager;
+	
+	@Override
+	public List<Activity> filter(ActivityFilter activityFilter) {
+		CriteriaBuilder builder = manager.getCriteriaBuilder();
+		CriteriaQuery<Activity> criteria = builder.createQuery(Activity.class);
+		Root<Activity> root = criteria.from(Activity.class);
+		
+		Predicate[] predicates = createConstraints(activityFilter, builder, root);
+		criteria.where(predicates);
+		
+		TypedQuery<Activity> query = manager.createQuery(criteria);
+		return query.getResultList();
+	}
+
+	private Predicate[] createConstraints(ActivityFilter activityFilter, CriteriaBuilder builder, Root<Activity> root) {
+		List<Predicate> predicates = new ArrayList<>();
+		
+		if(activityFilter.getUser() != null) {
+			predicates.add(builder.equal(
+					root.get("user"), activityFilter.getUser()));
+		}
+		
+		if(activityFilter.getType() != null) {
+			predicates.add(builder.equal(
+					root.get("type"), activityFilter.getType()));
+		}
+		
+		if (activityFilter.getInitialDate() != null) {
+			predicates.add(
+					builder.greaterThanOrEqualTo(root.get("date"), activityFilter.getInitialDate()));
+		}
+		
+		if (activityFilter.getFinalDate() != null) {
+			predicates.add(
+					builder.lessThanOrEqualTo(root.get("date"), activityFilter.getFinalDate()));
+		}
+		
+		return predicates.toArray(new Predicate[predicates.size()]);
+	}
+
+}
+
+
+No Angular:
+
+- Adicionar mais um provider no app.config.ts:
+
+providers: [
+    ...
+    DatePipe
+..
+]
+
+- Alterar o activity.service.ts:
+
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { DatePipe } from '@angular/common';
+
+import { firstValueFrom } from 'rxjs';
+import moment from 'moment';
+
+import { AuthService } from '../security/auth.service';
+import { Activity } from '../core/model';
+
+export interface ActivityFilter {
+  user?: any,
+  type?: string,
+  initialDate?: Date;
+  finalDate?: Date;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ActivityService {
+
+  activitiesUrl = 'http://localhost:8080/activities';
+
+  email: any;
+
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService,
+    private datePipe: DatePipe
+  ) { }
+
+  async listByUser(): Promise<any> {
+    this.email = this.auth.jwtPayload?.sub;
+    return await firstValueFrom(this.http.get(`${this.activitiesUrl}/user/${this.email}`));
+  }
+
+  async filter(filter: ActivityFilter): Promise<any> {
+    const headers = new HttpHeaders()
+      .append('Authorization', 'Basic YWRtaW5AYWxnYW1vbmV5LmNvbTphZG1pbg==');
+
+    let params = new HttpParams();
+
+    if (filter.user) {
+      params = params.set('user', filter.user);
+    }
+
+    if (filter.type) {
+      params = params.set('type', filter.type);
+    }
+
+    if (filter.initialDate) {
+      params = params.set('initialDate', this.datePipe.transform(filter.initialDate, 'yyyy-MM-dd')!);
+    }
+
+    if (filter.finalDate) {
+      params = params.set('finalDate', this.datePipe.transform(filter.finalDate, 'yyyy-MM-dd')!);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${this.activitiesUrl}?resumo`, { headers, params })
+      );
+      return response;
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  async add(activity: Activity): Promise<Activity> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    const body = Activity.toJson(activity);
+    return await firstValueFrom(this.http.post<Activity>(this.activitiesUrl, body, { headers }));
+  }
+
+  async delete(id: number): Promise<any> {
+    await this.http.delete(`${this.activitiesUrl}/${id}`)
+      .toPromise();
+    return null;
+  }
+
+  async update(activity: Activity): Promise<Activity | undefined> {
+    const headers = new HttpHeaders()
+      .append('Content-Type', 'application/json');
+
+    const response = await this.http.put<Activity>(`${this.activitiesUrl}/${activity.id}`, Activity.toJson(activity), { headers })
+      .toPromise();
+    const updated = response;
+    if (updated) {
+      this.stringToDate(updated);
+    }
+    return updated;
+  }
+
+  async findById(id: number): Promise<Activity | undefined> {
+    const response = await this.http.get<Activity>(`${this.activitiesUrl}/${id}`)
+      .toPromise();
+    const activity = response;
+    if (activity) {
+      this.stringToDate(activity);
+    }
+    return activity;
+  }
+
+  private stringToDate(activity: Activity): void {
+    activity.date = moment(activity.date, 'DD/MM/YYYY').toDate();
+  }
+
+}
+
+- Alterar o activities-list.component.ts:
+
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { Title } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
+
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { SelectModule } from 'primeng/select';
+import { DatePickerModule } from 'primeng/datepicker';
+
+import { ActivityFilter, ActivityService } from '../activity.service';
+import { ErrorHandlerService } from '../../core/error-handler.service';
+import { AuthService } from '../../security/auth.service';
+import { User } from '../../core/model';
+
+@Component({
+  selector: 'app-activities-list',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    ButtonModule,
+    TableModule,
+    TooltipModule,
+    RouterModule,
+    SelectModule,
+    DatePickerModule
+  ],
+  providers:[
+    Title
+  ],
+  templateUrl: './activities-list.component.html',
+  styleUrl: './activities-list.component.css'
+})
+export class ActivitiesListComponent {
+
+  type?: string;
+  initialDate?: Date;
+  finalDate?: Date;
+
+  types = [
+    { label: 'Todos', value: '' },
+    { label: 'Caminhada', value: 'CAMINHADA' },
+    { label: 'Ciclismo', value: 'CICLISMO' },
+    { label: 'Corrida', value: 'CORRIDA' },
+    { label: 'Natação', value: 'NATACAO' }
+  ];
+
+  activities = []
+
+  constructor(
+    private activityService: ActivityService,
+    private confirmation: ConfirmationService,
+    private messageService: MessageService,
+    private errorHandler: ErrorHandlerService,
+    private title: Title,
+    private router: Router,
+    private auth: AuthService
+  ){ }
+
+  ngOnInit(): void {
+    this.title.setTitle('Lista de Atividades');
+    this.filter();
+  }
+
+  filter(): void {
+    const filter: ActivityFilter = {
+      user: new User().id = this.auth.jwtPayload?.user_id,
+      type: this.type,
+      initialDate: this.initialDate,
+      finalDate: this.finalDate
+    }
+
+    this.activityService.filter(filter)
+      .then(result => {
+        this.activities = result;
+      })
+      .catch(error => this.errorHandler.handle(error));
+
+  }
+
+  confirmRemoval(activity: any): void {
+    this.confirmation.confirm({
+      message: 'Tem certeza que deseja excluir?',
+      accept: () => {
+        this.delete(activity);
+      }
+    });
+  }
+
+  delete(activity: any): void {
+    this.activityService.delete(activity.id)
+      .then(() => {
+        this.filter();
+        this.messageService.add({ severity: 'success', detail: 'Atividade excluída com sucesso!' });
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+}
+
+- Alterar o activities-list.component.html:
+
+<div class="container">
+  
+  <form autocomplete="off" (ngSubmit)="filter()" class="p-grid p-fluid">
+
+    <div class="p-col-12 text-center">
+      <h1>Atividades Físicas</h1>
+    </div>
+
+    <fieldset class="p-col-12 p-md-12 mb-3">
+      <legend><i class="pi pi-filter mr-2"></i>Filtros de Pesquisa</legend>
+
+      <p-select [options]="types" placeholder="Selecione" name="type" [(ngModel)]="type">
+      </p-select>
+
+      <div class="mt-2">
+        <p-datepicker dateFormat="dd/mm/yy" [style]="{ width: '100%' }" [(ngModel)]="initialDate" name="initialDate"
+          placeholder="Data inicial">
+        </p-datepicker>
+      </div>
+
+      <div class="mt-2">
+        <p-datepicker dateFormat="dd/mm/yy" [style]="{ width: '100%' }" [(ngModel)]="finalDate" name="finalDate"
+          placeholder="Data final">
+        </p-datepicker>
+      </div>
+
+      <div class="mt-2">
+        <button pButton type="submit" label="Filtrar"></button>
+      </div>
+    </fieldset>
+  </form>
+
+
+  <div class="p-col-12">
+    <p-table [value]="activities" responsiveLayout="stack" [breakpoint]="'768px'">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Tipo</th>
+          <th>Data</th>
+          <th>Distância</th>
+          <th>Duração</th>
+          <th class="col-actions-header"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-activity>
+        <tr>
+          <td>
+            <span *ngIf="activity.type === 'CORRIDA'">
+              <img src="running_icon.png" alt="Corrida">
+            </span>
+            <span *ngIf="activity.type === 'CAMINHADA'">
+              <img src="walking_icon.png" alt="Caminhada">
+            </span>
+            <span *ngIf="activity.type === 'CICLISMO'">
+              <img src="cycling_icon.png" alt="Ciclismo">
+            </span>
+            <span *ngIf="activity.type === 'NATACAO'">
+              <img src="swimming_icon.png" alt="Natação">
+            </span>
+          </td>
+          <td>{{ activity.date }}</td>
+          <td>{{ activity.distance | number: '1.1-1'}} km</td>
+          <td>{{ activity.duration }} min</td>
+          <td class="text-center">
+            <a pButton icon="pi pi-pencil" pTooltip="Editar" tooltipPosition="top"
+              class="p-button-rounded p-button-text p-button-info mr-1"
+              [routerLink]="['/activities', activity.id]"></a>
+            <button pButton icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="top"
+              class="p-button-rounded p-button-text p-button-danger"
+              (click)="confirmRemoval(activity)"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage" let-columns>
+        <tr>
+          <td>
+            Nenhuma atividade cadastrada.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+  <div class="p-col-12">
+    <p><a pButton label="Nova Atividade" icon="pi pi-plus" routerLink="/activities/new"></a></p>
+  </div>
+</div>
+
+

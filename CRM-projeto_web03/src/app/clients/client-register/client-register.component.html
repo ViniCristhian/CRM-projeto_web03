@@ -1,0 +1,42 @@
+<div class="container form-shell">
+  <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+    <div class="card">
+      <div class="form-header">
+        <p class="eyebrow">CRM</p>
+        <h1>Novo cliente</h1>
+      </div>
+
+      <div class="p-grid p-fluid">
+        <div class="p-col-12 p-md-6">
+          <label for="nome">Nome</label>
+          <input id="nome" pInputText name="nome" type="text" [(ngModel)]="client.nome" required minlength="3" #nome="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="empresa">Empresa</label>
+          <input id="empresa" pInputText name="empresa" type="text" [(ngModel)]="client.empresa" required #empresa="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="email">E-mail</label>
+          <input id="email" pInputText name="email" type="email" [(ngModel)]="client.email" required email #emailField="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="telefone">Telefone</label>
+          <input id="telefone" pInputText name="telefone" type="tel" [(ngModel)]="client.telefone" required #telefone="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="status">Status</label>
+          <input id="status" pInputText name="status" type="text" [(ngModel)]="client.status" required #status="ngModel">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button pButton type="submit" label="Salvar" [disabled]="f.invalid"></button>
+        <a pButton type="button" label="Cancelar" severity="secondary" routerLink="/clients"></a>
+      </div>
+    </div>
+  </form>
+</div>
