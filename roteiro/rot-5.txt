@@ -1,0 +1,359 @@
+Roteiro - Aula 10/09/2026
+
+-----------------------------------------------
+Cadastro de usuários
+-----------------------------------------------
+Na API:
+ 
+- Na classe User, adicionar anotação JsonProperty para a data:
+
+	@NotNull
+	@Column(name = "birth_date")
+	@JsonFormat(pattern = "dd/MM/yyyy")
+	@JsonProperty("date")
+	private LocalDate birthDate;
+	
+- Criar a interface PermissionRepository:
+
+package br.edu.ifspcjo.ads.web3.ifitness.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import br.edu.ifspcjo.ads.web3.ifitness.domain.model.Permission;
+
+public interface PermissionRepository extends JpaRepository<Permission, Long>{
+
+}
+	
+- Atualizar a classe UserService:
+
+package br.edu.ifspcjo.ads.web3.ifitness.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import br.edu.ifspcjo.ads.web3.ifitness.domain.model.Permission;
+import br.edu.ifspcjo.ads.web3.ifitness.domain.model.User;
+import br.edu.ifspcjo.ads.web3.ifitness.repository.PermissionRepository;
+import br.edu.ifspcjo.ads.web3.ifitness.repository.UserRepository;
+
+@Service
+public class UserService {
+	
+	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired 
+	PermissionRepository permissionRepository;
+	
+	public User save(User user) {
+		user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
+		user.setPermissions(addCommonUserPermissions());
+		return userRepository.save(user);
+	}
+	
+	public List<Permission> addCommonUserPermissions(){
+		List<Permission> permissions = new ArrayList<>();
+		permissions.add(permissionRepository.findById(1L).get());
+		permissions.add(permissionRepository.findById(3L).get());
+		permissions.add(permissionRepository.findById(4L).get());
+		permissions.add(permissionRepository.findById(5L).get());
+		permissions.add(permissionRepository.findById(6L).get());
+		return permissions;
+	}
+
+	public User update(Long id, User user) {
+		User userSaved = findUserById(id);
+		BeanUtils.copyProperties(user, userSaved, "id");
+		return userRepository.save(userSaved);
+	}
+
+	public void updateActiveProperty(Long id, Boolean active) {
+		User userSaved = findUserById(id);
+		userSaved.setActive(active);
+		userRepository.save(userSaved);
+	}
+	
+	public User findUserById(Long id) {
+		User userSaved = userRepository.findById(id).orElseThrow(() -> new EmptyResultDataAccessException(1));
+		return userSaved;
+	}
+
+}
+
+- Alterar o método create() da classe UserResource:
+
+	@PostMapping
+	@ResponseStatus(HttpStatus.CREATED)
+	// remover *************
+	//@PreAuthorize("hasAuthority('ROLE_REGISTER_USER') and #oauth2.hasScope('write')") 
+	public User create(@Valid @RequestBody User user, HttpServletResponse response) {
+		return userService.save(user); // aqui!!!
+	}
+
+- Alterar o método securityFilterChain() da classe SecurityConfig:
+
+	@Bean
+	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http.authorizeHttpRequests(
+				authorize -> authorize.requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh", "/auth/logout", "/users")
+						.permitAll().anyRequest().authenticated())
+				.csrf(csrf -> csrf.disable())
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()));
+		return http.build();
+	}
+
+
+-----------------------------------------------
+Criando o formulário de cadastro de usuários
+-----------------------------------------------
+
+- No terminal, criar um componente user-register:
+
+ng g c users/user-register --skip-tests
+
+- No arquivo model.ts, atualizar o modelo de User:
+
+export class User {
+  id!: number;
+  name!: string;
+  email!: string;
+  date!: Date;
+  password!: string;
+  gender!: string;
+  active = true;
+
+  static toJson(user: User): any {
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      password: user.password,
+      date: moment(user.date).format('DD/MM/YYYY'),
+      gender: user.gender,
+      active: user.active
+    }
+  }
+}
+
+- No terminal:
+
+ng g s users/user --skip-tests
+
+- No arquivo user.service.ts:
+
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+
+import { User } from '../core/model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class UserService {
+
+  usersUrl = 'http://localhost:8080/users';
+
+  constructor(private http: HttpClient) { }
+
+  async add(user: User): Promise<User> {
+      const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+      const body = User.toJson(user);
+      return await firstValueFrom(this.http.post<User>(this.usersUrl, body, { headers }));
+    }
+}
+
+- No user-register.component.ts, alterar:
+
+import { Component } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
+import { Title } from '@angular/platform-browser';
+
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { MessageService } from 'primeng/api';
+import { DatePicker } from 'primeng/datepicker';
+
+import { User } from '../../core/model';
+import { UserService } from '../user.service';
+import { ErrorHandlerService } from '../../core/error-handler.service';
+import { MessageComponent } from '../../shared/message/message.component';
+
+@Component({
+  selector: 'app-user-register',
+  imports: [
+    FormsModule,
+    InputTextModule,
+    ButtonModule,
+    SelectModule,
+    DatePicker,
+    RouterModule,
+    MessageComponent
+  ],
+  templateUrl: './user-register.component.html',
+  styleUrl: './user-register.component.css'
+})
+export class UserRegisterComponent {
+
+  user = new User();
+
+  genders = [
+    { label: 'Masculino', value: 'MASCULINO' },
+    { label: 'Feminino', value: 'FEMININO' },
+    { label: 'Outro', value: 'OUTRO' },
+    { label: 'Prefiro não dizer', value: 'PREFIRO_NAO_DIZER' }
+  ];
+
+  constructor(
+    private userService: UserService,
+    private errorHandler: ErrorHandlerService,
+    private messageService: MessageService,
+    private router: Router,
+    private title: Title
+  ){}
+
+  ngOnInit(): void {
+    this.title.setTitle('Cadastro de Usuário');
+  }
+
+  save() {
+    this.userService.add(this.user)
+      .then(() => {
+        this.messageService.add({ severity: 'success', detail: 'Usuário adicionado com sucesso!' });
+        this.router.navigate(['/login']);
+      })
+      .catch(error => this.errorHandler.handle(error));
+  }
+
+}
+
+  
+- No user-register.component.html, adicionar:
+
+<div class="container">
+  <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+
+    <div class="p-grid">
+      <div class="p-col-12">
+        <h1>Cadastre-se</h1>
+      </div>
+
+      <div class="p-col-12 p-md-9 p-fluid">
+        <label>Nome completo</label>
+        <input pInputText name="name" type="text"
+        [(ngModel)]="user.name" #name="ngModel" required minlength="3" maxlength="50">
+        <app-message [control]="name" error="required" text="Informe um nome"></app-message>
+        <app-message [control]="name" error="minlength"
+            text="Mínimo de {{ name.errors?.minlength?.requiredLength }} caracteres. Você digitou apenas {{ name.errors?.minlength?.actualLength }}"></app-message>
+      </div>
+
+      <div class="p-col-12 p-md-9 p-fluid">
+        <label>E-mail</label>
+        <input pInputText name="email" type="email"
+        [(ngModel)]="user.email" #email="ngModel" required>
+        <app-message [control]="email" error="required" text="Informe um e-mail"></app-message>
+      </div>
+
+
+      <div class="p-col-12 p-md-9 p-fluid">
+        <label>Senha</label>
+        <input pInputText name="password" type="password"
+        [(ngModel)]="user.password" #password="ngModel" required minlength="6" maxlength="8">
+        <app-message [control]="password" error="required" text="Informe uma senha de 6 a 8 caracteres."></app-message>
+        <app-message [control]="password" error="minlength"
+        text="Mínimo de {{ password.errors?.minlength?.requiredLength }} caracteres. Você digitou apenas {{ password.errors?.minlength?.actualLength }}"></app-message>
+      </div>
+
+      <div class="p-col-12 p-md-6 my-2 p-fluid">
+        <label class="calendar">Data de Nascimento</label>
+        <p-datepicker [style]="{'width':'100%'}" [inputStyle]="{'width':'100%'}" dateFormat="dd/mm/yy"
+          [(ngModel)]="user.date" name="date" #date="ngModel" required>
+        </p-datepicker>
+        <app-message [control]="date" error="required" text="Informe uma data"></app-message>
+      </div>
+
+      <div class="p-col-12 p-md-6 p-fluid">
+        <label>Gênero</label>
+        <p-select name="gender" [options]="genders" placeholder="Selecione"
+        [(ngModel)]="user.gender" #type="ngModel" required></p-select>
+      </div>
+
+      <div class="p-col-12">
+        <p>
+          <button pButton type="submit" label="Salvar" [disabled]="f.invalid"></button>
+        </p>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+- No user-register.component.css, adicionar regras:
+
+form {
+  margin-right: .25em;
+  max-width: 400px;
+  margin: auto;
+}
+
+.title {
+  text-align: center;
+}
+
+button, input, .p-select {
+  width: 100%;
+}
+
+- No app.routes.ts, adicionar rota:
+
+export const routes: Routes = [
+  { path: 'activities/:id', component: ActivityRegisterComponent },
+  { path: 'activities', component: ActivitiesListComponent },
+  { path: 'activities/new', component: ActivityRegisterComponent },
+  { path: 'users/new', component: UserRegisterComponent },
+  { path: 'login', component: LoginFormComponent }
+];
+
+- Desabilitar a rota de usuário no arquivo app.config.ts:
+
+	disallowedRoutes: ['http://localhost:8080/auth/login', 'http://localhost:8080/users']
+
+- Adicionar mensagem de erro para o status 404 no arquivo error-handler.service.ts:
+
+      if (errorResponse.status === 404) {
+        msg = 'Nenhuma atividade cadastrada.';
+      }
+
+- Adicionar import no arquivo login-form.component.ts:
+
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputTextModule,
+    ButtonModule,
+    RouterModule
+  ],
+      
+- Alterar o código do botão "Cadastrar" no arquivo login-form.component.html:
+
+	<a pButton label="Cadastrar" routerLink="/users/new"></a>
+	
+- No arquivo activities-list.component.html, adicionar no final do elemento <p-table>
+
+        <ng-template pTemplate="emptymessage" let-columns>
+          <tr>
+            <td>
+               Nenhuma atividade cadastrada.
+            </td>
+          </tr>
+        </ng-template>
