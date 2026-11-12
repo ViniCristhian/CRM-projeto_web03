@@ -7,9 +7,15 @@
 
     <div class="nav-links desktop-nav">
       <a routerLink="/home" routerLinkActive="active">Início</a>
-      <a routerLink="/clients" routerLinkActive="active">Clientes</a>
-      <a routerLink="/contacts" routerLinkActive="active">Contatos</a>
-      <a routerLink="/opportunities" routerLinkActive="active">Oportunidades</a>
+      @if (auth.hasAuthority('ROLE_SEARCH_ACCOUNT')) {
+        <a routerLink="/clients" routerLinkActive="active">Clientes</a>
+      }
+      @if (auth.hasAuthority('ROLE_SEARCH_CONTACT')) {
+        <a routerLink="/contacts" routerLinkActive="active">Contatos</a>
+      }
+      @if (auth.hasAuthority('ROLE_SEARCH_OPPORTUNITY')) {
+        <a routerLink="/opportunities" routerLinkActive="active">Oportunidades</a>
+      }
     </div>
 
     <div class="nav-actions">
@@ -23,9 +29,15 @@
   <ul class="navbar-menu" [hidden]="!displayingMenu">
     <li class="navbar-user">{{ username }}</li>
     <li class="navbar-menuitem"><a routerLink="/home" routerLinkActive="active" (click)="displayingMenu = false">Início</a></li>
-    <li class="navbar-menuitem"><a routerLink="/clients" routerLinkActive="active" (click)="displayingMenu = false">Clientes</a></li>
-    <li class="navbar-menuitem"><a routerLink="/contacts" routerLinkActive="active" (click)="displayingMenu = false">Contatos</a></li>
-    <li class="navbar-menuitem"><a routerLink="/opportunities" routerLinkActive="active" (click)="displayingMenu = false">Oportunidades</a></li>
+    @if (auth.hasAuthority('ROLE_SEARCH_ACCOUNT')) {
+      <li class="navbar-menuitem"><a routerLink="/clients" routerLinkActive="active" (click)="displayingMenu = false">Clientes</a></li>
+    }
+    @if (auth.hasAuthority('ROLE_SEARCH_CONTACT')) {
+      <li class="navbar-menuitem"><a routerLink="/contacts" routerLinkActive="active" (click)="displayingMenu = false">Contatos</a></li>
+    }
+    @if (auth.hasAuthority('ROLE_SEARCH_OPPORTUNITY')) {
+      <li class="navbar-menuitem"><a routerLink="/opportunities" routerLinkActive="active" (click)="displayingMenu = false">Oportunidades</a></li>
+    }
     <li class="navbar-menuitem"><a href="javascript:;" (click)="logout()">Logout</a></li>
   </ul>
 </nav>

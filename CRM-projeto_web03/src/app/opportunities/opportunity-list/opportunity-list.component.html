@@ -4,15 +4,42 @@
       <p class="eyebrow">CRM</p>
       <h1>Oportunidades</h1>
     </div>
+    <a pButton label="Nova oportunidade" icon="pi pi-plus" routerLink="/opportunities/new"></a>
   </div>
 
-  <div class="card surface opportunities-list">
-    <div class="opportunity-item" *ngFor="let opportunity of opportunities">
-      <div>
-        <h3>{{ opportunity.nome }}</h3>
-        <span class="status">{{ opportunity.status }}</span>
-      </div>
-      <strong>{{ opportunity.valor }}</strong>
+  <div class="card surface">
+    <div class="p-fluid" style="margin-bottom: 1rem; max-width: 320px;">
+      <label for="filtro">Buscar oportunidade</label>
+      <input id="filtro" pInputText type="text" [(ngModel)]="filtro" placeholder="Nome ou cliente">
     </div>
+
+    <p-table [value]="filteredOpportunities" [tableStyle]="{ 'min-width': '100%' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Negócio</th>
+          <th>Cliente</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-opportunity>
+        <tr>
+          <td>{{ opportunity.nomeNegocio }}</td>
+          <td>{{ opportunity.conta?.nomeEmpresa || '—' }}</td>
+          <td>{{ opportunity.valor | currency:'BRL':'symbol':'1.2-2' }}</td>
+          <td>{{ opportunity.estagioVenda?.estagio || '—' }}</td>
+          <td>
+            <a pButton type="button" icon="pi pi-pencil" severity="secondary" [routerLink]="['/opportunities', opportunity.id, 'edit']" title="Editar"></a>
+            <button pButton type="button" icon="pi pi-trash" severity="danger" class="ml-2" (click)="delete(opportunity.id)" title="Excluir"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5">Nenhuma oportunidade cadastrada.</td>
+        </tr>
+      </ng-template>
+    </p-table>
   </div>
 </div>

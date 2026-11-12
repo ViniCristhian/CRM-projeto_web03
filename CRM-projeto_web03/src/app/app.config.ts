@@ -6,8 +6,9 @@ import { routes } from './app.routes';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { JwtHelperService, JwtModule } from '@auth0/angular-jwt';
+import { IfitnessHttpInterceptor } from './security/crm-http-interceptor';
 
 export function tokenGetter(): any {
   return localStorage.getItem('token');
@@ -19,6 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptorsFromDi() // Importante para que os interceptores do JwtModule funcionem
     ),
+    { provide: HTTP_INTERCEPTORS, useClass: IfitnessHttpInterceptor, multi: true },
     provideRouter(routes),
     importProvidersFrom(
       JwtModule.forRoot({

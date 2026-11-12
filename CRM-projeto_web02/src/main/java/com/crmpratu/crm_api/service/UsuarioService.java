@@ -27,11 +27,9 @@ public class UsuarioService {
     }
 
     public Usuario create(Usuario usuario) {
-        if (usuario.getPerfil() == null || usuario.getPerfil().getId() == null) {
-            Perfil perfilPadrao = perfilRepository.findById(1L)
-                    .orElseGet(() -> perfilRepository.findById(4L).orElseThrow());
-            usuario.setPerfil(perfilPadrao);
-        }
+        Perfil perfilPadrao = perfilRepository.findById(4L)
+                .orElseThrow(() -> new IllegalStateException("Perfil leitor não encontrado"));
+        usuario.setPerfil(perfilPadrao);
 
         if (usuario.getSenha() != null && !usuario.getSenha().isBlank())
             usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));

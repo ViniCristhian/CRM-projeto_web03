@@ -1,0 +1,37 @@
+<div class="container form-shell">
+  <form #f="ngForm" autocomplete="off" (ngSubmit)="save()">
+    <div class="card">
+      <div class="form-header">
+        <p class="eyebrow">CRM</p>
+        <h1>{{ isEdit ? 'Editar oportunidade' : 'Nova oportunidade' }}</h1>
+      </div>
+
+      <div class="p-grid p-fluid">
+        <div class="p-col-12 p-md-6">
+          <label for="nomeNegocio">Nome do negócio</label>
+          <input id="nomeNegocio" pInputText name="nomeNegocio" type="text" [(ngModel)]="opportunity.nomeNegocio" required minlength="3" #nomeNegocio="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="valor">Valor</label>
+          <input id="valor" pInputText name="valor" type="number" [(ngModel)]="opportunity.valor" required #valor="ngModel">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="dataCriacao">Data de criação</label>
+          <input id="dataCriacao" pInputText name="dataCriacao" type="date" [(ngModel)]="opportunity.dataCriacao">
+        </div>
+
+        <div class="p-col-12 p-md-6">
+          <label for="dataFechamento">Data de fechamento</label>
+          <input id="dataFechamento" pInputText name="dataFechamento" type="date" [(ngModel)]="opportunity.dataFechamento">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button pButton type="submit" label="Salvar" [disabled]="f.invalid"></button>
+        <a pButton type="button" label="Cancelar" severity="secondary" routerLink="/opportunities"></a>
+      </div>
+    </div>
+  </form>
+</div>

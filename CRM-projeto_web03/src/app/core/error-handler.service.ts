@@ -24,11 +24,11 @@ export class ErrorHandlerService {
       }
 
       if (errorResponse.status === 404) {
-        msg = 'Nenhuma atividade cadastrada.';
+        msg = 'Nenhum registro encontrado.';
       }
 
       try {
-        msg = errorResponse.error[0].userMessage;
+        msg = errorResponse.error.message || errorResponse.error[0]?.userMessage || msg;
       } catch (e) { }
 
       console.error('Ocorreu um erro', errorResponse);

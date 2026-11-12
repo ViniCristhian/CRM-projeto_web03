@@ -3,8 +3,8 @@ package com.crmpratu.crm_api.model;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -36,6 +36,8 @@ public class Usuario {
 
     @NotBlank(message = "A senha é obrigatória")
     @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(name = "senha", nullable = false, length = 60)
     private String senha;
 
     @Column(name = "ativo", nullable = false)
@@ -53,7 +55,7 @@ public class Usuario {
 
     public Usuario() {
         this.ativo = true;
-        this.perfil = new Perfil(1L);
+        this.perfil = new Perfil(4L);
     }
 
     public Long getId() {

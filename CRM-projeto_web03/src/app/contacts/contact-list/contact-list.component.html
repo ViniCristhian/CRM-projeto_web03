@@ -4,14 +4,40 @@
       <p class="eyebrow">CRM</p>
       <h1>Contatos</h1>
     </div>
+    <a pButton label="Novo contato" icon="pi pi-plus" routerLink="/contacts/new"></a>
   </div>
 
-  <div class="card surface contacts-grid">
-    <div class="contact-card" *ngFor="let contact of contacts">
-      <div class="avatar">{{ contact.nome.charAt(0) }}</div>
-      <h3>{{ contact.nome }}</h3>
-      <p>{{ contact.cargo }}</p>
-      <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
+  <div class="card surface">
+    <div class="p-fluid" style="margin-bottom: 1rem; max-width: 320px;">
+      <label for="filtro">Buscar contato</label>
+      <input id="filtro" pInputText type="text" [(ngModel)]="filtro" placeholder="Nome ou e-mail">
     </div>
+
+    <p-table [value]="filteredContacts" [tableStyle]="{ 'min-width': '100%' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Empresa</th>
+          <th>Ações</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-contact>
+        <tr>
+          <td>{{ contact.nome }}</td>
+          <td>{{ contact.email }}</td>
+          <td>{{ contact.conta?.nomeEmpresa || '—' }}</td>
+          <td>
+            <a pButton type="button" icon="pi pi-pencil" severity="secondary" [routerLink]="['/contacts', contact.id, 'edit']" title="Editar"></a>
+            <button pButton type="button" icon="pi pi-trash" severity="danger" class="ml-2" (click)="delete(contact.id)" title="Excluir"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="4">Nenhum contato cadastrado.</td>
+        </tr>
+      </ng-template>
+    </p-table>
   </div>
 </div>

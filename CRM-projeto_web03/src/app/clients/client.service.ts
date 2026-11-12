@@ -1,28 +1,58 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { Client } from '../core/model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ClientService {
-  private clients: Client[] = [
-    { id: 1, nome: 'Maria Santos', email: 'maria@greencrm.com', telefone: '(11) 99999-1111', empresa: 'GreenLeaf', status: 'Ativo' },
-    { id: 2, nome: 'João Pereira', email: 'joao@bluewave.com', telefone: '(11) 98888-2222', empresa: 'BlueWave', status: 'Potencial' },
-    { id: 3, nome: 'Ana Costa', email: 'ana@northview.com', telefone: '(11) 97777-3333', empresa: 'NorthView', status: 'Ativo' }
-  ];
+  private readonly baseUrl = 'http://localhost:8080/conta';
 
-  listAll(): Promise<Client[]> {
-    return Promise.resolve([...this.clients]);
+  constructor(private http: HttpClient) {}
+
+  private mapConta(conta: any): Client {
+    return {
+      id: conta.id,
+      nome: conta.nomeEmpresa || conta.nome || '',
+      email: conta.email || '',
+      telefone: conta.telefone || '',
+      empresa: conta.nomeEmpresa || conta.empresa || '',
+      nomeEmpresa: conta.nomeEmpresa || conta.empresa || '',
+      cnpj: conta.cnpj || '',
+      setor: conta.setor || { id: 1 },
+      status: 'Ativo'
+    };
   }
 
-  save(client: Client): Promise<Client> {
-    if (client.id) {
-      this.clients = this.clients.map(item => item.id === client.id ? client : item);
-      return Promise.resolve(client);
-    }
+  async listAll(): Promise<Client[]> {
+    const contas = await firstValueFrom(this.http.get<any[]>(`${this.baseUrl}/list`));
+    return contas.map((conta) => this.mapConta(conta));
+  }
 
-    client.id = this.clients.length ? Math.max(...this.clients.map(item => item.id)) + 1 : 1;
-    this.clients = [...this.clients, { ...client }];
-    return Promise.resolve(client);
+  async findById(id: number): Promise<Client> {
+    const conta = await firstValueFrom(this.http.get<any>(`${this.baseUrl}/find/${id}`));
+    return this.mapConta(conta);
+  }
+
+  async save(client: Client): Promise<Client> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    const payload = {
+      id: client.id,
+      nomeEmpresa: client.nomeEmpresa || client.empresa || client.nome,
+      cnpj: client.cnpj || '',
+      setor: client.setor || { id: 1 }
+    };
+
+    const request$ = client.id
+      ? this.http.put<any>(`${this.baseUrl}/update/${client.id}`, payload, { headers, withCredentials: true })
+      : this.http.post<any>(`${this.baseUrl}/register`, payload, { headers, withCredentials: true });
+
+    const conta = await firstValueFrom(request$);
+    return this.mapConta(conta);
+  }
+
+  async delete(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${this.baseUrl}/delete/${id}`, { withCredentials: true }));
   }
 }

@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { forkJoin } from 'rxjs';
+import { ClientService } from '../clients/client.service';
+import { ContactService } from '../contacts/contact.service';
+import { OpportunityService } from '../opportunities/opportunity.service';
 import { AuthService } from '../security/auth.service';
+import { UserService } from '../users/user.service';
 
 interface DashboardStat {
   label: string;
@@ -28,7 +31,10 @@ export class HomeComponent {
 
   constructor(
     public auth: AuthService,
-    private http: HttpClient
+    private clientService: ClientService,
+    private contactService: ContactService,
+    private opportunityService: OpportunityService,
+    private userService: UserService
   ) {
     this.loadDashboardData();
   }
@@ -39,10 +45,10 @@ export class HomeComponent {
 
   private loadDashboardData(): void {
     forkJoin({
-      contas: this.http.get<any[]>('http://localhost:8080/conta/list'),
-      contatos: this.http.get<any[]>('http://localhost:8080/contato/list'),
-      oportunidades: this.http.get<any[]>('http://localhost:8080/oportunidade/list'),
-      usuarios: this.http.get<any[]>('http://localhost:8080/usuario/list')
+      contas: this.clientService.listAll(),
+      contatos: this.contactService.listAll(),
+      oportunidades: this.opportunityService.listAll(),
+      usuarios: this.userService.listAll()
     }).subscribe({
       next: ({ contas, contatos, oportunidades, usuarios }) => {
         const totalContas = contas?.length ?? 0;

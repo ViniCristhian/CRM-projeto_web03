@@ -6,10 +6,10 @@ services:
     container_name: crm-web02-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: V142454
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-V142454}
       MYSQL_DATABASE: crm_pra_tu_db
       MYSQL_USER: crm_app
-      MYSQL_PASSWORD: V142454
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-V142454}
     ports:
       - "3306:3306"
     volumes:

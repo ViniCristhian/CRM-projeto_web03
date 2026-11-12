@@ -10,12 +10,11 @@ CREATE TABLE USUARIOS (
     id_usuario   INT PRIMARY KEY AUTO_INCREMENT,
     nome         VARCHAR(100) NOT NULL,
     email        VARCHAR(100) NOT NULL,
-    senha        VARCHAR(255) NOT NULL,
+    senha        VARCHAR(60) NOT NULL,
     id_perfil    INT NOT NULL DEFAULT 4,
     ativo        BOOLEAN DEFAULT TRUE,
     data_criacao DATE NOT NULL DEFAULT (CURRENT_DATE),
-    CONSTRAINT fk_usuarios_perfis FOREIGN KEY (id_perfil) REFERENCES PERFIS (id_perfil),
-    UNIQUE (senha)
+    CONSTRAINT fk_usuarios_perfis FOREIGN KEY (id_perfil) REFERENCES PERFIS (id_perfil)
 );
 
 -- Criação da Tabela de Setores

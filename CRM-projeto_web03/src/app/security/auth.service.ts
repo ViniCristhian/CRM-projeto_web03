@@ -89,6 +89,14 @@ export class AuthService {
     return this.jwtHelper.isTokenExpired(token);
   }
 
+  hasAuthority(authority: string): boolean {
+    const authorities = this.jwtPayload?.authorities ?? [];
+    if (Array.isArray(authorities)) {
+      return authorities.includes(authority);
+    }
+    return typeof authorities === 'string' ? authorities.split(' ').includes(authority) : false;
+  }
+
   clearAccessToken(): void {
     this.jwtPayload = null;
     localStorage.removeItem('token');
